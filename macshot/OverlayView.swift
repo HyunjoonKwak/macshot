@@ -1,5 +1,6 @@
 import Cocoa
 import UniformTypeIdentifiers
+import Vision
 
 protocol OverlayViewDelegate: AnyObject {
     func overlayViewDidFinishSelection(_ rect: NSRect)
@@ -10,6 +11,7 @@ protocol OverlayViewDelegate: AnyObject {
     func overlayViewDidRequestPin()
     func overlayViewDidRequestOCR()
     func overlayViewDidRequestQuickSave()
+    func overlayViewDidRequestDelayCapture(seconds: Int, selectionRect: NSRect)
 }
 
 class OverlayView: NSView {
@@ -79,6 +81,9 @@ class OverlayView: NSView {
 
     // Cursor enforcement timer — forces crosshair until selection is made
     private var cursorTimer: Timer?
+
+    // Delay capture
+    private var delaySeconds: Int = 0  // 0 = off, 3, 5, 10
 
     // Color picker popover
     private var showColorPicker: Bool = false
@@ -615,9 +620,9 @@ class OverlayView: NSView {
 
     private func rebuildToolbarLayout() {
         bottomButtons = ToolbarLayout.bottomButtons(selectedTool: currentTool, selectedColor: currentColor, beautifyEnabled: beautifyEnabled, beautifyStyleIndex: beautifyStyleIndex)
-        rightButtons = ToolbarLayout.rightButtons()
+        rightButtons = ToolbarLayout.rightButtons(delaySeconds: delaySeconds)
         bottomBarRect = ToolbarLayout.layoutBottom(buttons: &bottomButtons, selectionRect: selectionRect, viewBounds: bounds)
-        rightBarRect = ToolbarLayout.layoutRight(buttons: &rightButtons, selectionRect: selectionRect, viewBounds: bounds)
+        rightBarRect = ToolbarLayout.layoutRight(buttons: &rightButtons, selectionRect: selectionRect, viewBounds: bounds, bottomBarRect: bottomBarRect)
 
         // Apply hover state
         for i in 0..<bottomButtons.count {
@@ -967,11 +972,25 @@ class OverlayView: NSView {
             overlayDelegate?.overlayViewDidRequestPin()
         case .ocr:
             overlayDelegate?.overlayViewDidRequestOCR()
+        case .autoRedact:
+            performAutoRedact()
         case .beautify:
             beautifyEnabled.toggle()
             needsDisplay = true
         case .beautifyStyle:
             beautifyStyleIndex = (beautifyStyleIndex + 1) % BeautifyRenderer.styles.count
+            needsDisplay = true
+        case .delayCapture:
+            // Cycle: 0 → 3 → 5 → 10 → 0
+            switch delaySeconds {
+            case 0: delaySeconds = 3
+            case 3: delaySeconds = 5
+            case 5: delaySeconds = 10
+            default: delaySeconds = 0
+            }
+            if delaySeconds > 0 {
+                overlayDelegate?.overlayViewDidRequestDelayCapture(seconds: delaySeconds, selectionRect: selectionRect)
+            }
             needsDisplay = true
         case .cancel:
             overlayDelegate?.overlayViewDidCancel()
@@ -1499,18 +1518,146 @@ class OverlayView: NSView {
     // MARK: - Undo/Redo
 
     func undo() {
-        if let last = annotations.popLast() {
+        guard let last = annotations.last else { return }
+        if let groupID = last.groupID {
+            // Batch undo: remove all annotations with the same groupID
+            var removed: [Annotation] = []
+            while let ann = annotations.last, ann.groupID == groupID {
+                annotations.removeLast()
+                removed.append(ann)
+                if ann.tool == .number { numberCounter = max(0, numberCounter - 1) }
+            }
+            redoStack.append(contentsOf: removed)
+        } else {
+            annotations.removeLast()
             redoStack.append(last)
             if last.tool == .number { numberCounter = max(0, numberCounter - 1) }
-            needsDisplay = true
         }
+        needsDisplay = true
     }
 
     func redo() {
-        if let annotation = redoStack.popLast() {
-            annotations.append(annotation)
-            if annotation.tool == .number { numberCounter += 1 }
-            needsDisplay = true
+        guard let last = redoStack.last else { return }
+        if let groupID = last.groupID {
+            // Batch redo: restore all annotations with the same groupID
+            var restored: [Annotation] = []
+            while let ann = redoStack.last, ann.groupID == groupID {
+                redoStack.removeLast()
+                restored.append(ann)
+                if ann.tool == .number { numberCounter += 1 }
+            }
+            annotations.append(contentsOf: restored)
+        } else {
+            redoStack.removeLast()
+            annotations.append(last)
+            if last.tool == .number { numberCounter += 1 }
+        }
+        needsDisplay = true
+    }
+
+    // MARK: - Auto-Redact
+
+    private static let sensitivePatterns: [(name: String, pattern: NSRegularExpression)] = {
+        let patterns: [(String, String)] = [
+            // Email addresses
+            ("email", #"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"#),
+            // Phone numbers (international and US formats)
+            ("phone", #"(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)\d{3}[-.\s]?\d{4}"#),
+            // SSN (US Social Security Number)
+            ("ssn", #"\b\d{3}[-\s]\d{2}[-\s]\d{4}\b"#),
+            // Credit card numbers (16 digits with optional separators)
+            ("credit_card", #"\b(?:\d{4}[-\s]?){3}\d{4}\b"#),
+            // IPv4 addresses
+            ("ipv4", #"\b(?:\d{1,3}\.){3}\d{1,3}\b"#),
+            // AWS access keys
+            ("aws_key", #"\b(?:AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}\b"#),
+            // Generic secret assignments (password=, token:, api_key=, etc.)
+            ("secret_assignment", #"(?:password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key)\s*[:=]\s*\S+"#),
+            // Long hex strings (API keys, hashes — 32+ chars)
+            ("hex_key", #"\b[0-9a-fA-F]{32,}\b"#),
+            // Bearer tokens
+            ("bearer", #"Bearer\s+[A-Za-z0-9\-._~+/]+=*"#),
+        ]
+        return patterns.compactMap { (name, pat) in
+            guard let regex = try? NSRegularExpression(pattern: pat, options: [.caseInsensitive]) else { return nil }
+            return (name, regex)
+        }
+    }()
+
+    private func performAutoRedact() {
+        guard state == .selected,
+              selectionRect.width > 1, selectionRect.height > 1,
+              let screenshot = screenshotImage else { return }
+
+        // Crop the selected region for Vision
+        let regionImage = NSImage(size: selectionRect.size)
+        regionImage.lockFocus()
+        screenshot.draw(in: NSRect(x: -selectionRect.origin.x, y: -selectionRect.origin.y,
+                                    width: bounds.width, height: bounds.height),
+                        from: .zero, operation: .copy, fraction: 1.0)
+        regionImage.unlockFocus()
+
+        guard let tiffData = regionImage.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData),
+              let cgImage = bitmap.cgImage else { return }
+
+        let selRect = selectionRect
+        let redactColor = currentColor
+
+        let request = VNRecognizeTextRequest { [weak self] request, error in
+            guard let self = self else { return }
+            guard let observations = request.results as? [VNRecognizedTextObservation] else { return }
+
+            var redactAnnotations: [Annotation] = []
+            let groupID = UUID()
+            let padding: CGFloat = 2  // slight padding around detected text
+
+            for observation in observations {
+                guard let candidate = observation.topCandidates(1).first else { continue }
+                let text = candidate.string
+                let fullRange = NSRange(location: 0, length: (text as NSString).length)
+
+                for (_, regex) in OverlayView.sensitivePatterns {
+                    let matches = regex.matches(in: text, options: [], range: fullRange)
+                    for match in matches {
+                        guard let swiftRange = Range(match.range, in: text) else { continue }
+
+                        // Get precise bounding box for the matched substring
+                        guard let box = try? candidate.boundingBox(for: swiftRange) else { continue }
+                        let obsBox = box.boundingBox
+
+                        // Vision normalized coords (0-1, bottom-left origin) -> view coords
+                        let viewX = selRect.origin.x + obsBox.origin.x * selRect.width - padding
+                        let viewY = selRect.origin.y + obsBox.origin.y * selRect.height - padding
+                        let viewW = obsBox.width * selRect.width + padding * 2
+                        let viewH = obsBox.height * selRect.height + padding * 2
+
+                        let annotation = Annotation(
+                            tool: .filledRectangle,
+                            startPoint: NSPoint(x: viewX, y: viewY),
+                            endPoint: NSPoint(x: viewX + viewW, y: viewY + viewH),
+                            color: redactColor,
+                            strokeWidth: 0
+                        )
+                        annotation.groupID = groupID
+                        redactAnnotations.append(annotation)
+                    }
+                }
+            }
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, !redactAnnotations.isEmpty else { return }
+                self.annotations.append(contentsOf: redactAnnotations)
+                self.redoStack.removeAll()
+                self.needsDisplay = true
+            }
+        }
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = true
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            try? handler.perform([request])
         }
     }
 
@@ -1555,6 +1702,17 @@ class OverlayView: NSView {
 
     // MARK: - Cleanup
 
+    /// Pre-set a selection (used by delay capture to restore the previous region)
+    func applySelection(_ rect: NSRect) {
+        selectionRect = rect
+        selectionStart = rect.origin
+        state = .selected
+        showToolbars = true
+        cursorTimer?.invalidate()
+        cursorTimer = nil
+        needsDisplay = true
+    }
+
     func reset() {
         state = .idle
         selectionRect = .zero
@@ -1566,6 +1724,7 @@ class OverlayView: NSView {
         showColorPicker = false
         moveMode = false
         isRightClickSelecting = false
+        delaySeconds = 0
         beautifyEnabled = false
         beautifyStyleIndex = 0
         textScrollView?.removeFromSuperview()

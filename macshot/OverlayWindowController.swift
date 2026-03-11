@@ -7,6 +7,7 @@ protocol OverlayWindowControllerDelegate: AnyObject {
     func overlayDidConfirm(_ controller: OverlayWindowController, capturedImage: NSImage?)
     func overlayDidRequestPin(_ controller: OverlayWindowController, image: NSImage)
     func overlayDidRequestOCR(_ controller: OverlayWindowController, text: String)
+    func overlayDidRequestDelayCapture(_ controller: OverlayWindowController, seconds: Int, selectionRect: NSRect)
 }
 
 /// Manages one fullscreen overlay per screen.
@@ -55,6 +56,10 @@ class OverlayWindowController {
             window.makeFirstResponder(view)
         }
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func applySelection(_ rect: NSRect) {
+        overlayView?.applySelection(rect)
     }
 
     func dismiss() {
@@ -168,6 +173,10 @@ extension OverlayWindowController: OverlayViewDelegate {
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             try? handler.perform([request])
         }
+    }
+
+    func overlayViewDidRequestDelayCapture(seconds: Int, selectionRect: NSRect) {
+        overlayDelegate?.overlayDidRequestDelayCapture(self, seconds: seconds, selectionRect: selectionRect)
     }
 
     func overlayViewDidRequestQuickSave() {

@@ -10,6 +10,8 @@ macshot lives in your menu bar and lets you capture, annotate, and share screens
 - **Annotation tools** — arrow, line, rectangle, filled rectangle, ellipse, pencil, marker/highlighter, text, numbered markers, pixelate, Gaussian blur
 - **Rich text** — bold, italic, underline, strikethrough, adjustable font size, color
 - **Shift-constrain** — hold Shift while drawing for straight lines, perfect circles, and squares
+- **Auto-redact PII** — one-click detection and redaction of emails, phone numbers, credit cards, SSNs, API keys, and more
+- **Delay capture** — set a 3/5/10 second timer to capture tooltips, menus, and hover states
 - **Secure redaction** — pixelate tool is irreversible (multi-pass downscale, not a reversible blur)
 - **Color picker** — 12 preset colors, one click to switch
 - **Undo/Redo** — `Cmd+Z` / `Cmd+Shift+Z`

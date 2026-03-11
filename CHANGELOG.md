@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0] - 2026-03-11
+
+### Added
+- **Auto-Redact**: One-click PII detection and redaction. Scans the selected region for emails, phone numbers, credit cards, SSNs, IP addresses, API keys, bearer tokens, and secrets — then covers each match with a filled rectangle. Fully undoable (Cmd+Z removes all redactions at once).
+- **Delay Capture**: Timer button in the right toolbar lets you dismiss the overlay and re-capture after 3, 5, or 10 seconds — perfect for capturing tooltips, menus, and hover states. The selection region is preserved. Click to cycle through delays.
+- **Right-click mode toggle**: New "Right-click action" setting in Preferences — choose between "Save to file" (default) or "Copy to clipboard".
+
+### Fixed
+- **Toolbar overlap**: Right toolbar no longer overlaps with the bottom toolbar when drawing narrow selections.
+
 ## [1.1.1] - 2026-03-11
 
 ### Added

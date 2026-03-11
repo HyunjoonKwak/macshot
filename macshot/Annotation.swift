@@ -30,6 +30,7 @@ class Annotation {
     var fontSize: CGFloat = 16
     var isBold: Bool = false
     var isItalic: Bool = false
+    var groupID: UUID?  // for batch undo (e.g. auto-redact)
     var isUnderline: Bool = false
     var isStrikethrough: Bool = false
 

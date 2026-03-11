@@ -13,10 +13,12 @@ enum ToolbarButtonAction {
     case save
     case pin
     case ocr
+    case autoRedact
     case beautify
     case beautifyStyle
     case cancel
     case moveSelection
+    case delayCapture
 }
 
 struct ToolbarButton {
@@ -77,6 +79,7 @@ class ToolbarLayout {
         buttons.append(ToolbarButton(action: .redo, sfSymbol: "arrow.uturn.forward", label: nil, tooltip: "Redo"))
         buttons.append(ToolbarButton(action: .pin, sfSymbol: "pin.fill", label: nil, tooltip: "Pin"))
         buttons.append(ToolbarButton(action: .ocr, sfSymbol: "doc.text.viewfinder", label: nil, tooltip: "OCR Text"))
+        buttons.append(ToolbarButton(action: .autoRedact, sfSymbol: "eye.slash.fill", label: nil, tooltip: "Auto-Redact sensitive data"))
 
         // Beautify toggle
         var beautifyBtn = ToolbarButton(action: .beautify, sfSymbol: "sparkles", label: nil, tooltip: "Beautify — wrap in window frame")
@@ -97,10 +100,19 @@ class ToolbarLayout {
     }
 
     // Right toolbar items (actions)
-    static func rightButtons() -> [ToolbarButton] {
+    static func rightButtons(delaySeconds: Int = 0) -> [ToolbarButton] {
+        let delaySymbol: String
+        let delayTooltip: String
+        switch delaySeconds {
+        case 3: delaySymbol = "3.circle.fill"; delayTooltip = "Delay: 3s (click to change)"
+        case 5: delaySymbol = "5.circle.fill"; delayTooltip = "Delay: 5s (click to change)"
+        case 10: delaySymbol = "10.circle.fill"; delayTooltip = "Delay: 10s (click to change)"
+        default: delaySymbol = "timer"; delayTooltip = "Delay capture (click to set)"
+        }
         return [
             ToolbarButton(action: .cancel, sfSymbol: "xmark", label: nil, tooltip: "Cancel"),
             ToolbarButton(action: .moveSelection, sfSymbol: "arrow.up.and.down.and.arrow.left.and.right", label: nil, tooltip: "Move Selection"),
+            ToolbarButton(action: .delayCapture, sfSymbol: delaySymbol, label: nil, tooltip: delayTooltip),
         ]
     }
 
@@ -135,7 +147,7 @@ class ToolbarLayout {
     }
 
     // Layout right toolbar rects
-    static func layoutRight(buttons: inout [ToolbarButton], selectionRect: NSRect, viewBounds: NSRect) -> NSRect {
+    static func layoutRight(buttons: inout [ToolbarButton], selectionRect: NSRect, viewBounds: NSRect, bottomBarRect: NSRect = .zero) -> NSRect {
         let count = CGFloat(buttons.count)
         let totalWidth = buttonSize + toolbarPadding * 2
         let totalHeight = count * buttonSize + (count - 1) * buttonSpacing + toolbarPadding * 2
@@ -146,6 +158,14 @@ class ToolbarLayout {
         // If right of screen, put left
         if barX + totalWidth > viewBounds.maxX - 4 {
             barX = selectionRect.minX - totalWidth - 6
+        }
+
+        // Avoid overlapping with bottom toolbar
+        if bottomBarRect.width > 0 {
+            let rightBarRect = NSRect(x: barX, y: barY, width: totalWidth, height: totalHeight)
+            if rightBarRect.intersects(bottomBarRect) {
+                barY = bottomBarRect.maxY + 4
+            }
         }
 
         // Clamp vertical
