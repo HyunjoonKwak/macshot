@@ -1,7 +1,7 @@
 # macshot
 
 <p align="center">
-  <img src="assets/logo.svg" alt="macshot logo" width="128"/>
+  <img src="assets/logo.svg" alt="macshot logo" width="256"/>
 </p>
 
 A native macOS screenshot tool inspired by [Flameshot](https://flameshot.org/). No Electron, no Qt, no bloat — just pure Swift and AppKit.
