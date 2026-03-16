@@ -117,8 +117,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         prefsItem.target = self
         menu.addItem(prefsItem)
 
-        let updateItem = NSMenuItem(title: "Check for Updates...", action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)), keyEquivalent: "")
-        updateItem.target = updaterController
+        let updateItem = NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
         menu.addItem(updateItem)
 
         menu.addItem(NSMenuItem.separator())
@@ -365,6 +365,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Quit
+
+    @objc private func checkForUpdates() {
+        NSApp.activate(ignoringOtherApps: true)
+        updaterController.checkForUpdates(nil)
+    }
 
     @objc private func quitApp() {
         NSApp.terminate(nil)
