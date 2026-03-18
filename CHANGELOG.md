@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.8.0] - 2026-03-18
+
+### Added
+- **Editor top bar** — fixed full-width bar at the top of the editor window with pixel dimensions display, crop button, flip horizontal/vertical buttons, and zoom level indicator.
+- **Flip image** — flip the screenshot horizontally or vertically in the editor. All annotations (including freeform strokes and control points) are mirrored to match. Fully undoable.
+- **Undoable crop** — cropping in the editor now saves the previous image state, so Cmd+Z restores the full uncropped image.
+- **Crop selection preview** — dragging a crop area now shows a live preview with dimmed overlay outside the selection, a white border, and rule-of-thirds grid lines.
+- **Number pointer cone** — click-and-drag with the number tool to create a triangular pointer extending from the numbered circle toward where you release. Single-click still places a plain number. Great for pointing numbers at specific areas.
+- **Auto-measure** — with the measure tool selected, hold `1` to preview a vertical measurement or `2` for horizontal. The ruler scans outward from the cursor until the pixel color changes, automatically measuring the element you're pointing at. Release to commit, fully undoable.
+- **Font picker hover highlight** — hovering over fonts in the dropdown now highlights the item and brightens the text.
+
+### Improved
+- **Number circle sizing** — all 7 stroke width steps now produce visibly different circle sizes (was stuck at the same size for steps 1-3).
+- **Number text contrast** — text inside number circles is now black for light fill colors (white, yellow, etc.) instead of always white.
+- **Bold/italic on system font** — bold and italic buttons now work correctly with the System font (SF Pro). Previously they had no effect because NSFontManager can't convert system font traits; now uses font descriptor traits directly.
+- **Font selection preserves text focus** — clicking a font in the dropdown no longer commits/deselects the active text field. The font change applies immediately to the current text.
+- **Editor bottom toolbar spacing** — the bottom toolbar is now raised when the secondary options row is visible, so it no longer clips off-screen.
+- **Editor right toolbar position** — the right toolbar now sits below the top bar instead of overlapping it.
+
+### Fixed
+- **Loupe preview in beautify mode** — the loupe live preview was hidden behind the beautify gradient overlay; now redrawn on top.
+- **Text formatting commits text** — clicking bold/italic/underline/strikethrough no longer finalizes the active text field before applying the change.
+- **Corner radius slider label overlap** — increased gap between the slider handle and value label.
+- **Stroke width slider label overlap** — increased gap between the slider knob and "20px" label.
+
 ## [2.7.1] - 2026-03-18
 
 ### Added

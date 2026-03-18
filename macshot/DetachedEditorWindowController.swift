@@ -30,7 +30,7 @@ class DetachedEditorWindowController: NSObject, NSWindowDelegate {
 
         // Toolbar padding: must match the values in OverlayView's detached draw block
         let padH: CGFloat = 8 + 52   // left + right toolbar
-        let padV: CGFloat = 52 + 36 + 8   // bottom toolbar + options row (34+2 gap) + top
+        let padV: CGFloat = 56 + 36 + 36  // bottom toolbar + gap + options row (34+2 gap) + top bar (32+4)
         let minW: CGFloat = 800  // enough width for all bottom toolbar buttons
         let minH: CGFloat = 400  // enough height for right toolbar buttons
 

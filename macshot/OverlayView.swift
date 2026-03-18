@@ -27,9 +27,14 @@ protocol OverlayViewDelegate: AnyObject {
 enum UndoEntry {
     case added(Annotation)          // annotation was added; undo removes it
     case deleted(Annotation, Int)   // annotation was deleted at index; undo re-inserts it
+    /// Image transform (crop/flip): stores the previous image and annotation offsets to restore.
+    case imageTransform(previousImage: NSImage, annotationOffsets: [(Annotation, CGFloat, CGFloat)])
 
     var annotation: Annotation {
-        switch self { case .added(let a), .deleted(let a, _): return a }
+        switch self {
+        case .added(let a), .deleted(let a, _): return a
+        case .imageTransform: return Annotation(tool: .measure, startPoint: .zero, endPoint: .zero, color: .clear, strokeWidth: 0)  // dummy
+        }
     }
 }
 
@@ -161,6 +166,7 @@ class OverlayView: NSView {
     private var showFontPicker: Bool = false
     private var fontPickerRect: NSRect = .zero
     private var fontPickerItemRects: [NSRect] = []
+    private var hoveredFontIndex: Int = -1
 
     // Toolbars (drawn inline)
     private var bottomButtons: [ToolbarButton] = []
@@ -316,6 +322,14 @@ class OverlayView: NSView {
     private var markerCursorPoint: NSPoint = .zero
     private var colorSamplerPoint: NSPoint = .zero  // canvas space, for color picker tool
     private var colorSamplerBitmap: NSBitmapImageRep?  // cached bitmap for fast pixel sampling
+    // Auto-measure preview (live while holding 1 or 2 key)
+    private var autoMeasurePreview: Annotation?  // temporary, drawn but not in annotations[]
+    private var autoMeasureVertical: Bool = true  // true = "1" key, false = "2" key
+    // Editor top bar
+    private var editorTopBarRect: NSRect = .zero
+    private var editorCropBtnRect: NSRect = .zero
+    private var editorFlipHBtnRect: NSRect = .zero
+    private var editorFlipVBtnRect: NSRect = .zero
     private var cachedCompositedImage: NSImage? = nil  // invalidated when annotations change
     private var showLoupeSizePicker: Bool = false
     private var loupeSizePickerRect: NSRect = .zero
@@ -558,6 +572,21 @@ class OverlayView: NSView {
         // Force arrow cursor over color picker popup
         if showColorPicker && colorPickerRect.contains(point) {
             NSCursor.arrow.set()
+        }
+
+        // Font picker hover tracking
+        if showFontPicker {
+            NSCursor.arrow.set()
+            var newIdx = -1
+            for (i, itemRect) in fontPickerItemRects.enumerated() {
+                if itemRect.contains(point) { newIdx = i; break }
+            }
+            if newIdx != hoveredFontIndex {
+                hoveredFontIndex = newIdx
+                needsDisplay = true
+            }
+        } else if hoveredFontIndex != -1 {
+            hoveredFontIndex = -1
         }
 
         // Window snap: highlight hovered window in idle state.
@@ -881,6 +910,11 @@ class OverlayView: NSView {
             addCursorRect(optionsRowRect, cursor: .arrow)
         }
 
+        // Editor top bar — arrow cursor
+        if isDetached && editorTopBarRect.width > 0 {
+            addCursorRect(editorTopBarRect, cursor: .arrow)
+        }
+
         // Stroke pickers — pointing hand for rows
         let popups: [(Bool, NSRect, Int)] = [
             (showStrokePicker, strokePickerRect, 7) // 7 widths
@@ -1031,8 +1065,9 @@ class OverlayView: NSView {
             let padLeft:   CGFloat = 8
             let padRight:  CGFloat = 52  // right toolbar width
             let optionsRowExtra: CGFloat = toolHasOptionsRow ? 36 : 0  // 34 row + 2 gap
-            let padBottom: CGFloat = 52 + optionsRowExtra  // bottom toolbar + options row
-            let padTop:    CGFloat = 8
+            let padBottom: CGFloat = 56 + optionsRowExtra  // bottom toolbar + options row + gap
+            let editorTopBarH: CGFloat = 32
+            let padTop:    CGFloat = editorTopBarH + 4  // top bar + gap
             let availW = bounds.width  - padLeft - padRight
             let availH = bounds.height - padBottom - padTop
             if let image = screenshotImage {
@@ -1122,6 +1157,49 @@ class OverlayView: NSView {
                 annotation.draw(in: context)
             }
             currentAnnotation?.draw(in: context)
+            autoMeasurePreview?.draw(in: context)
+
+            // Crop selection rectangle preview
+            if isCropDragging && cropDragRect.width > 1 && cropDragRect.height > 1 {
+                // Dim area outside crop rect
+                let dimColor = NSColor.black.withAlphaComponent(0.4)
+                dimColor.setFill()
+                // Top
+                NSBezierPath(rect: NSRect(x: selectionRect.minX, y: cropDragRect.maxY,
+                                          width: selectionRect.width, height: selectionRect.maxY - cropDragRect.maxY)).fill()
+                // Bottom
+                NSBezierPath(rect: NSRect(x: selectionRect.minX, y: selectionRect.minY,
+                                          width: selectionRect.width, height: cropDragRect.minY - selectionRect.minY)).fill()
+                // Left
+                NSBezierPath(rect: NSRect(x: selectionRect.minX, y: cropDragRect.minY,
+                                          width: cropDragRect.minX - selectionRect.minX, height: cropDragRect.height)).fill()
+                // Right
+                NSBezierPath(rect: NSRect(x: cropDragRect.maxX, y: cropDragRect.minY,
+                                          width: selectionRect.maxX - cropDragRect.maxX, height: cropDragRect.height)).fill()
+
+                // Crop border
+                NSColor.white.setStroke()
+                let cropBorder = NSBezierPath(rect: cropDragRect)
+                cropBorder.lineWidth = 1.5
+                cropBorder.stroke()
+
+                // Rule of thirds grid
+                NSColor.white.withAlphaComponent(0.3).setStroke()
+                let thirdW = cropDragRect.width / 3
+                let thirdH = cropDragRect.height / 3
+                for i in 1...2 {
+                    let gridLine = NSBezierPath()
+                    gridLine.move(to: NSPoint(x: cropDragRect.minX + thirdW * CGFloat(i), y: cropDragRect.minY))
+                    gridLine.line(to: NSPoint(x: cropDragRect.minX + thirdW * CGFloat(i), y: cropDragRect.maxY))
+                    gridLine.lineWidth = 0.5
+                    gridLine.stroke()
+                    let hLine = NSBezierPath()
+                    hLine.move(to: NSPoint(x: cropDragRect.minX, y: cropDragRect.minY + thirdH * CGFloat(i)))
+                    hLine.line(to: NSPoint(x: cropDragRect.maxX, y: cropDragRect.minY + thirdH * CGFloat(i)))
+                    hLine.lineWidth = 0.5
+                    hLine.stroke()
+                }
+            }
 
             // Live loupe preview when loupe tool is active
             if currentTool == .loupe && selectionRect.contains(loupeCursorPoint) && loupeCursorPoint != .zero {
@@ -1161,6 +1239,14 @@ class OverlayView: NSView {
                     } else if let hovered = hoveredAnnotation, [AnnotationTool.pencil, .arrow, .line, .rectangle, .filledRectangle, .ellipse].contains(currentTool) {
                         drawAnnotationControls(for: hovered)
                     }
+                    context.restoreGraphicsState()
+                }
+
+                // Re-draw loupe preview on top of beautify so it stays visible
+                if currentTool == .loupe && selectionRect.contains(loupeCursorPoint) && loupeCursorPoint != .zero {
+                    context.saveGraphicsState()
+                    applyZoomTransform(to: context)
+                    drawLoupePreview(at: loupeCursorPoint)
                     context.restoreGraphicsState()
                 }
             }
@@ -1244,6 +1330,11 @@ class OverlayView: NSView {
 
                 // Tooltip for hovered button
                 drawHoveredTooltip()
+            }
+
+            // Editor top bar (drawn outside zoom transform, fixed to window top)
+            if isDetached {
+                drawEditorTopBar()
             }
 
             // Radial color wheel
@@ -2569,7 +2660,7 @@ class OverlayView: NSView {
     /// Whether the current tool should show the options row
     private var toolHasOptionsRow: Bool {
         switch currentTool {
-        case .pencil, .line, .arrow, .rectangle, .filledRectangle, .ellipse, .marker, .number, .loupe:
+        case .pencil, .line, .arrow, .rectangle, .filledRectangle, .ellipse, .marker, .number, .loupe, .measure:
             return true
         case .text:
             return true
@@ -2632,6 +2723,21 @@ class OverlayView: NSView {
 
         if currentTool == .text {
             drawTextOptionsRow(in: rowRect)
+            return
+        }
+
+        if currentTool == .measure {
+            // Hint text for auto-measure shortcuts
+            let hint = "Hold 1 auto-vertical  ·  Hold 2 auto-horizontal"
+            let hintAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 10, weight: .medium),
+                .foregroundColor: NSColor.white.withAlphaComponent(0.5),
+            ]
+            let hintStr = hint as NSString
+            let hintSize = hintStr.size(withAttributes: hintAttrs)
+            hintStr.draw(at: NSPoint(x: rowRect.midX - hintSize.width / 2,
+                                     y: rowRect.midY - hintSize.height / 2),
+                         withAttributes: hintAttrs)
             return
         }
 
@@ -2807,8 +2913,8 @@ class OverlayView: NSView {
                 .foregroundColor: NSColor.white.withAlphaComponent(0.5),
             ]
             let valSize = valStr.size(withAttributes: valAttrs)
-            valStr.draw(at: NSPoint(x: curX + crSliderW + 4, y: rowRect.midY - valSize.height / 2), withAttributes: valAttrs)
-            curX += crSliderW + valSize.width + 12
+            valStr.draw(at: NSPoint(x: curX + crSliderW + 10, y: rowRect.midY - valSize.height / 2), withAttributes: valAttrs)
+            curX += crSliderW + 10 + valSize.width + 8
         }
     }
 
@@ -3024,9 +3130,13 @@ class OverlayView: NSView {
             fontPickerItemRects.append(itemRect)
 
             let isSelected = family == textFontFamily
+            let isHovered = i == hoveredFontIndex
 
             if isSelected {
                 ToolbarLayout.accentColor.withAlphaComponent(0.25).setFill()
+                NSBezierPath(roundedRect: itemRect, xRadius: 4, yRadius: 4).fill()
+            } else if isHovered {
+                NSColor.white.withAlphaComponent(0.08).setFill()
                 NSBezierPath(roundedRect: itemRect, xRadius: 4, yRadius: 4).fill()
             }
 
@@ -3037,9 +3147,10 @@ class OverlayView: NSView {
             } else {
                 previewFont = NSFont(name: family, size: 11) ?? NSFont.systemFont(ofSize: 11)
             }
+            let textColor: NSColor = isSelected ? ToolbarLayout.accentColor : (isHovered ? NSColor.white : NSColor.white.withAlphaComponent(0.8))
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: previewFont,
-                .foregroundColor: isSelected ? ToolbarLayout.accentColor : NSColor.white.withAlphaComponent(0.8),
+                .foregroundColor: textColor,
             ]
             let nameSize = (family as NSString).size(withAttributes: attrs)
             (family as NSString).draw(
@@ -3894,6 +4005,286 @@ class OverlayView: NSView {
         showOverlayError("Copied \(result.hex)")
     }
 
+    // MARK: - Editor Top Bar
+
+    private func drawEditorTopBar() {
+        let barH: CGFloat = 32
+        let barRect = NSRect(x: 0, y: bounds.maxY - barH, width: bounds.width, height: barH)
+        editorTopBarRect = barRect
+
+        // Background — subtle dark bar
+        NSColor(white: 0.10, alpha: 1.0).setFill()
+        NSBezierPath(rect: barRect).fill()
+
+        // Bottom separator line
+        NSColor(white: 0.25, alpha: 1.0).setFill()
+        NSBezierPath(rect: NSRect(x: 0, y: barRect.minY, width: barRect.width, height: 0.5)).fill()
+
+        let btnH: CGFloat = 22
+        let btnY = barRect.midY - btnH / 2
+        let btnRadius: CGFloat = 4
+        var curX: CGFloat = 12
+
+        let labelFont = NSFont.systemFont(ofSize: 11, weight: .medium)
+        let labelColor = NSColor.white.withAlphaComponent(0.85)
+        let dimColor = NSColor.white.withAlphaComponent(0.45)
+
+        // ── Pixel size label ──
+        if let img = screenshotImage {
+            let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+            let pw = Int(img.size.width * scale)
+            let ph = Int(img.size.height * scale)
+            let sizeStr = "\(pw) × \(ph)" as NSString
+            let sizeAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
+                .foregroundColor: dimColor,
+            ]
+            let sizeSize = sizeStr.size(withAttributes: sizeAttrs)
+            sizeStr.draw(at: NSPoint(x: curX, y: barRect.midY - sizeSize.height / 2), withAttributes: sizeAttrs)
+            curX += sizeSize.width + 16
+        }
+
+        // ── Separator ──
+        NSColor.white.withAlphaComponent(0.15).setFill()
+        NSBezierPath(rect: NSRect(x: curX, y: barRect.minY + 7, width: 0.5, height: barH - 14)).fill()
+        curX += 12
+
+        // ── Crop button ──
+        let cropLabel = "Crop" as NSString
+        let cropAttrs: [NSAttributedString.Key: Any] = [.font: labelFont, .foregroundColor: labelColor]
+        let cropSize = cropLabel.size(withAttributes: cropAttrs)
+        let cropBtnW = cropSize.width + 16
+        let cropRect = NSRect(x: curX, y: btnY, width: cropBtnW, height: btnH)
+        editorCropBtnRect = cropRect
+
+        let isCropActive = (currentTool == .crop)
+        let cropBg = isCropActive ? ToolbarLayout.accentColor.withAlphaComponent(0.8) : NSColor.white.withAlphaComponent(0.08)
+        cropBg.setFill()
+        NSBezierPath(roundedRect: cropRect, xRadius: btnRadius, yRadius: btnRadius).fill()
+        cropLabel.draw(at: NSPoint(x: cropRect.midX - cropSize.width / 2, y: cropRect.midY - cropSize.height / 2),
+                       withAttributes: cropAttrs)
+        curX += cropBtnW + 8
+
+        // ── Flip Horizontal button ──
+        let flipHBtnW: CGFloat = btnH
+        let flipHRect = NSRect(x: curX, y: btnY, width: flipHBtnW, height: btnH)
+        editorFlipHBtnRect = flipHRect
+
+        NSColor.white.withAlphaComponent(0.08).setFill()
+        NSBezierPath(roundedRect: flipHRect, xRadius: btnRadius, yRadius: btnRadius).fill()
+
+        if let sym = NSImage(systemSymbolName: "arrow.left.and.right.righttriangle.left.righttriangle.right", accessibilityDescription: "Flip Horizontal") {
+            let cfg = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+            let icon = sym.withSymbolConfiguration(cfg) ?? sym
+            let iconSize = icon.size
+            let iconRect = NSRect(x: flipHRect.midX - iconSize.width / 2, y: flipHRect.midY - iconSize.height / 2,
+                                  width: iconSize.width, height: iconSize.height)
+            icon.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 0.85)
+        }
+        curX += flipHBtnW + 4
+
+        // ── Flip Vertical button ──
+        let flipVBtnW: CGFloat = btnH
+        let flipVRect = NSRect(x: curX, y: btnY, width: flipVBtnW, height: btnH)
+        editorFlipVBtnRect = flipVRect
+
+        NSColor.white.withAlphaComponent(0.08).setFill()
+        NSBezierPath(roundedRect: flipVRect, xRadius: btnRadius, yRadius: btnRadius).fill()
+
+        if let sym = NSImage(systemSymbolName: "arrow.up.and.down.righttriangle.up.righttriangle.down", accessibilityDescription: "Flip Vertical") {
+            let cfg = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+            let icon = sym.withSymbolConfiguration(cfg) ?? sym
+            let iconSize = icon.size
+            let iconRect = NSRect(x: flipVRect.midX - iconSize.width / 2, y: flipVRect.midY - iconSize.height / 2,
+                                  width: iconSize.width, height: iconSize.height)
+            icon.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 0.85)
+        }
+
+        // ── Zoom label (right-aligned) ──
+        let zoomStr = "\(Int(zoomLevel * 100))%" as NSString
+        let zoomAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
+            .foregroundColor: dimColor,
+        ]
+        let zoomSize = zoomStr.size(withAttributes: zoomAttrs)
+        zoomStr.draw(at: NSPoint(x: barRect.maxX - zoomSize.width - 12, y: barRect.midY - zoomSize.height / 2),
+                     withAttributes: zoomAttrs)
+    }
+
+    // MARK: - Editor Image Transforms
+
+    private func flipImageHorizontally() {
+        guard let original = screenshotImage,
+              let cgImage = original.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+
+        // Save state for undo
+        let prevImage = original.copy() as! NSImage
+        undoStack.append(.imageTransform(previousImage: prevImage, annotationOffsets: []))
+        redoStack.removeAll()
+
+        let w = cgImage.width, h = cgImage.height
+        let cs = cgImage.colorSpace ?? CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: nil, width: w, height: h,
+                                  bitsPerComponent: cgImage.bitsPerComponent,
+                                  bytesPerRow: 0, space: cs,
+                                  bitmapInfo: cgImage.bitmapInfo.rawValue) else { return }
+        ctx.translateBy(x: CGFloat(w), y: 0)
+        ctx.scaleBy(x: -1, y: 1)
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let flipped = ctx.makeImage() else { return }
+
+        screenshotImage = NSImage(cgImage: flipped, size: original.size)
+
+        // Mirror annotation X coordinates around the image center
+        let imgW = original.size.width
+        for ann in annotations {
+            ann.startPoint.x = selectionRect.minX + (selectionRect.maxX - ann.startPoint.x)
+            ann.endPoint.x = selectionRect.minX + (selectionRect.maxX - ann.endPoint.x)
+            if let cp = ann.controlPoint {
+                ann.controlPoint = NSPoint(x: selectionRect.minX + (selectionRect.maxX - cp.x), y: cp.y)
+            }
+            // Mirror freeform points
+            if let pts = ann.points {
+                ann.points = pts.map { NSPoint(x: selectionRect.minX + (selectionRect.maxX - $0.x), y: $0.y) }
+            }
+        }
+
+        cachedCompositedImage = nil
+        needsDisplay = true
+    }
+
+    private func flipImageVertically() {
+        guard let original = screenshotImage,
+              let cgImage = original.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+
+        let prevImage = original.copy() as! NSImage
+        undoStack.append(.imageTransform(previousImage: prevImage, annotationOffsets: []))
+        redoStack.removeAll()
+
+        let w = cgImage.width, h = cgImage.height
+        let cs = cgImage.colorSpace ?? CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: nil, width: w, height: h,
+                                  bitsPerComponent: cgImage.bitsPerComponent,
+                                  bytesPerRow: 0, space: cs,
+                                  bitmapInfo: cgImage.bitmapInfo.rawValue) else { return }
+        ctx.translateBy(x: 0, y: CGFloat(h))
+        ctx.scaleBy(x: 1, y: -1)
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let flipped = ctx.makeImage() else { return }
+
+        screenshotImage = NSImage(cgImage: flipped, size: original.size)
+
+        // Mirror annotation Y coordinates around the image center
+        for ann in annotations {
+            ann.startPoint.y = selectionRect.minY + (selectionRect.maxY - ann.startPoint.y)
+            ann.endPoint.y = selectionRect.minY + (selectionRect.maxY - ann.endPoint.y)
+            if let cp = ann.controlPoint {
+                ann.controlPoint = NSPoint(x: cp.x, y: selectionRect.minY + (selectionRect.maxY - cp.y))
+            }
+            if let pts = ann.points {
+                ann.points = pts.map { NSPoint(x: $0.x, y: selectionRect.minY + (selectionRect.maxY - $0.y)) }
+            }
+        }
+
+        cachedCompositedImage = nil
+        needsDisplay = true
+    }
+
+    // MARK: - Auto Measure
+
+    /// Update the auto-measure live preview based on cursor position.
+    /// Called on keyDown repeat and mouseMoved while key is held.
+    private func updateAutoMeasurePreview() {
+        let vertical = autoMeasureVertical
+        autoMeasurePreview = computeAutoMeasure(vertical: vertical)
+        needsDisplay = true
+    }
+
+    /// Compute an auto-measure annotation from the cursor position along a vertical or horizontal axis
+    /// by scanning outward until the pixel color changes significantly.
+    private func computeAutoMeasure(vertical: Bool) -> Annotation? {
+        guard let screenshot = screenshotImage,
+              let cgImage = screenshot.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+
+        guard let window = window else { return nil }
+        let windowPoint = window.mouseLocationOutsideOfEventStream
+        let viewPoint = convert(windowPoint, from: nil)
+        let canvasPoint = isDetached ? viewToCanvas(viewPoint) : viewPoint
+
+        let drawRect = isDetached ? selectionRect : bounds
+        let normX = (canvasPoint.x - drawRect.minX) / drawRect.width
+        let normY = (canvasPoint.y - drawRect.minY) / drawRect.height
+
+        let pixelX = Int(normX * CGFloat(cgImage.width))
+        let pixelY = Int((1.0 - normY) * CGFloat(cgImage.height))
+
+        guard pixelX >= 0, pixelX < cgImage.width, pixelY >= 0, pixelY < cgImage.height else { return nil }
+
+        let w = cgImage.width, h = cgImage.height
+        let srgb = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: nil, width: w, height: h,
+                                  bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: srgb,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let data = ctx.data else { return nil }
+
+        let ptr = data.assumingMemoryBound(to: UInt8.self)
+
+        func pixelAt(_ x: Int, _ y: Int) -> (UInt8, UInt8, UInt8) {
+            let offset = (y * w + x) * 4
+            return (ptr[offset], ptr[offset + 1], ptr[offset + 2])
+        }
+
+        func colorDiff(_ a: (UInt8, UInt8, UInt8), _ b: (UInt8, UInt8, UInt8)) -> Int {
+            abs(Int(a.0) - Int(b.0)) + abs(Int(a.1) - Int(b.1)) + abs(Int(a.2) - Int(b.2))
+        }
+
+        let refColor = pixelAt(pixelX, pixelY)
+        let threshold = 30
+
+        func toCanvas(px: Int, py: Int) -> NSPoint {
+            let nx = CGFloat(px) / CGFloat(w)
+            let ny = 1.0 - CGFloat(py) / CGFloat(h)
+            return NSPoint(x: drawRect.minX + nx * drawRect.width,
+                           y: drawRect.minY + ny * drawRect.height)
+        }
+
+        var startPx: Int, endPx: Int
+
+        if vertical {
+            startPx = pixelY
+            for py in stride(from: pixelY - 1, through: 0, by: -1) {
+                if colorDiff(refColor, pixelAt(pixelX, py)) > threshold { break }
+                startPx = py
+            }
+            endPx = pixelY
+            for py in (pixelY + 1)..<h {
+                if colorDiff(refColor, pixelAt(pixelX, py)) > threshold { break }
+                endPx = py
+            }
+            let p1 = toCanvas(px: pixelX, py: startPx)
+            let p2 = toCanvas(px: pixelX, py: endPx)
+            return Annotation(tool: .measure, startPoint: p1, endPoint: p2,
+                              color: annotationColor, strokeWidth: currentStrokeWidth)
+        } else {
+            startPx = pixelX
+            for px in stride(from: pixelX - 1, through: 0, by: -1) {
+                if colorDiff(refColor, pixelAt(px, pixelY)) > threshold { break }
+                startPx = px
+            }
+            endPx = pixelX
+            for px in (pixelX + 1)..<w {
+                if colorDiff(refColor, pixelAt(px, pixelY)) > threshold { break }
+                endPx = px
+            }
+            let p1 = toCanvas(px: startPx, py: pixelY)
+            let p2 = toCanvas(px: endPx, py: pixelY)
+            return Annotation(tool: .measure, startPoint: p1, endPoint: p2,
+                              color: annotationColor, strokeWidth: currentStrokeWidth)
+        }
+    }
+
     // MARK: - Marker Cursor Preview
 
     private func drawMarkerCursorPreview(at center: NSPoint) {
@@ -4061,11 +4452,14 @@ class OverlayView: NSView {
         guard cgPixelRect.width > 0, cgPixelRect.height > 0,
               let croppedCG = cgOriginal.cropping(to: cgPixelRect) else { return }
 
+        // Save state for undo before modifying
+        let prevImage = originalImage.copy() as! NSImage
+        undoStack.append(.imageTransform(previousImage: prevImage, annotationOffsets: []))
+        redoStack.removeAll()
+
         let dx = selectionRect.minX - canvasRect.minX
         let dy = selectionRect.minY - canvasRect.minY
         for ann in annotations { ann.move(dx: dx, dy: dy) }
-        for entry in undoStack { entry.annotation.move(dx: dx, dy: dy) }
-        for entry in redoStack { entry.annotation.move(dx: dx, dy: dy) }
 
         screenshotImage = NSImage(cgImage: croppedCG,
                                   size: NSSize(width: croppedCG.width, height: croppedCG.height))
@@ -4230,8 +4624,9 @@ class OverlayView: NSView {
                 baseRect = NSRect(origin: annotation.startPoint, size: size)
             }
         case .number:
-            let radius = max(14, annotation.strokeWidth * 4)
-            baseRect = NSRect(x: annotation.startPoint.x - radius, y: annotation.startPoint.y - radius, width: radius * 2, height: radius * 2)
+            let radius = 8 + annotation.strokeWidth * 3
+            let circleRect = NSRect(x: annotation.startPoint.x - radius, y: annotation.startPoint.y - radius, width: radius * 2, height: radius * 2)
+            baseRect = circleRect.union(NSRect(x: annotation.endPoint.x - 2, y: annotation.endPoint.y - 2, width: 4, height: 4))
         default:
             baseRect = annotation.boundingRect
         }
@@ -4759,7 +5154,8 @@ class OverlayView: NSView {
             // Bottom bar: centered at the bottom of the view
             let bw = bottomBarRect.width
             let bh = bottomBarRect.height
-            let newBottomY: CGFloat = 6
+            let optRowSpace: CGFloat = toolHasOptionsRow ? 40 : 0  // 34 row + 2 gap + 4 margin
+            let newBottomY: CGFloat = 6 + optRowSpace
             let newBottomX = bounds.midX - bw / 2
             let bdx = newBottomX - bottomBarRect.origin.x
             let bdy = newBottomY - bottomBarRect.origin.y
@@ -4772,7 +5168,8 @@ class OverlayView: NSView {
             let rw = rightBarRect.width
             let rh = rightBarRect.height
             let newRightX = bounds.maxX - rw - 6
-            let newRightY = bounds.maxY - rh - 6
+            let editorTopBarOffset: CGFloat = 32 + 4  // top bar height + gap
+            let newRightY = bounds.maxY - rh - editorTopBarOffset
             let rdx = newRightX - rightBarRect.origin.x
             let rdy = newRightY - rightBarRect.origin.y
             rightBarRect = NSRect(x: newRightX, y: newRightY, width: rw, height: rh)
@@ -4916,6 +5313,28 @@ class OverlayView: NSView {
                 }
                 return
             }
+        }
+
+        // Editor top bar button clicks
+        if isDetached && editorTopBarRect.contains(point) {
+            if editorCropBtnRect.contains(point) {
+                if currentTool == .crop {
+                    currentTool = .arrow
+                } else {
+                    currentTool = .crop
+                }
+                needsDisplay = true
+                return
+            }
+            if editorFlipHBtnRect.contains(point) {
+                flipImageHorizontally()
+                return
+            }
+            if editorFlipVBtnRect.contains(point) {
+                flipImageVertically()
+                return
+            }
+            return  // click was on top bar but not on a button — consume it
         }
 
         let isTextEditing = textEditView != nil
@@ -5225,7 +5644,12 @@ class OverlayView: NSView {
             }
         }
 
-        commitTextFieldIfNeeded()
+        // Don't commit text if clicking on text formatting controls in the options row
+        let isTextFormattingClick = textEditView != nil && currentTool == .text &&
+            (optionsRowRect.contains(point) || (showFontPicker && fontPickerRect.contains(point)))
+        if !isTextFormattingClick {
+            commitTextFieldIfNeeded()
+        }
         commitSizeInputIfNeeded()
         commitZoomInputIfNeeded()
 
@@ -5267,6 +5691,9 @@ class OverlayView: NSView {
                                 UserDefaults.standard.set(family, forKey: "textFontFamily")
                                 applyFontFamilyToSelection(family)
                                 showFontPicker = false
+                                if let tv = textEditView {
+                                    window?.makeFirstResponder(tv)
+                                }
                                 needsDisplay = true
                                 return
                             }
@@ -6426,9 +6853,7 @@ class OverlayView: NSView {
             numberCounter += 1
             let annotation = Annotation(tool: .number, startPoint: point, endPoint: point, color: opacityApplied(for: .number), strokeWidth: currentNumberSize)
             annotation.number = numberCounter
-            annotations.append(annotation)
-            undoStack.append(.added(annotation))
-            redoStack.removeAll()
+            currentAnnotation = annotation
             needsDisplay = true
             return
         default:
@@ -6508,7 +6933,7 @@ class OverlayView: NSView {
                 undoStack.append(.added(annotation))
                 redoStack.removeAll()
             }
-        } else if dx > 2 || dy > 2 {
+        } else if annotation.tool == .number || dx > 2 || dy > 2 {
             annotation.bakePixelate()  // bake pixelate result and release screenshot ref
             annotations.append(annotation)
             undoStack.append(.added(annotation))
@@ -6603,20 +7028,18 @@ class OverlayView: NSView {
         guard let tv = textEditView, let ts = tv.textStorage else {
             textBold.toggle(); needsDisplay = true; return
         }
+        textBold.toggle()
         let range = selectedOrAllRange()
         if range.length > 0 {
             ts.beginEditing()
             ts.enumerateAttribute(.font, in: range) { value, attrRange, _ in
                 if let font = value as? NSFont {
-                    let fm = NSFontManager.shared
-                    let isBold = fm.traits(of: font).contains(.boldFontMask)
-                    let newFont = isBold ? fm.convert(font, toNotHaveTrait: .boldFontMask) : fm.convert(font, toHaveTrait: .boldFontMask)
+                    let newFont = self.applyBoldItalic(to: font, bold: self.textBold, italic: self.textItalic)
                     ts.addAttribute(.font, value: newFont, range: attrRange)
                 }
             }
             ts.endEditing()
         }
-        textBold.toggle()
         tv.typingAttributes[.font] = currentTextFont()
         window?.makeFirstResponder(tv)
         needsDisplay = true
@@ -6626,23 +7049,62 @@ class OverlayView: NSView {
         guard let tv = textEditView, let ts = tv.textStorage else {
             textItalic.toggle(); needsDisplay = true; return
         }
+        textItalic.toggle()
         let range = selectedOrAllRange()
         if range.length > 0 {
             ts.beginEditing()
             ts.enumerateAttribute(.font, in: range) { value, attrRange, _ in
                 if let font = value as? NSFont {
-                    let fm = NSFontManager.shared
-                    let isItalic = fm.traits(of: font).contains(.italicFontMask)
-                    let newFont = isItalic ? fm.convert(font, toNotHaveTrait: .italicFontMask) : fm.convert(font, toHaveTrait: .italicFontMask)
+                    let newFont = self.applyBoldItalic(to: font, bold: self.textBold, italic: self.textItalic)
                     ts.addAttribute(.font, value: newFont, range: attrRange)
                 }
             }
             ts.endEditing()
         }
-        textItalic.toggle()
         tv.typingAttributes[.font] = currentTextFont()
         window?.makeFirstResponder(tv)
         needsDisplay = true
+    }
+
+    /// Apply bold/italic to a font, handling system fonts that NSFontManager can't convert via traits.
+    private func applyBoldItalic(to font: NSFont, bold: Bool, italic: Bool) -> NSFont {
+        let size = font.pointSize
+        let familyName = font.familyName ?? "System"
+
+        // System font: use NSFont.systemFont directly (NSFontManager can't convert SF traits)
+        if familyName.hasPrefix(".") || familyName == "System" || textFontFamily == "System" {
+            var base: NSFont
+            if bold && italic {
+                base = NSFont.systemFont(ofSize: size, weight: .bold)
+                // System italic via font descriptor
+                let desc = base.fontDescriptor.withSymbolicTraits(.italic)
+                base = NSFont(descriptor: desc, size: size) ?? base
+            } else if bold {
+                base = NSFont.systemFont(ofSize: size, weight: .bold)
+            } else if italic {
+                let regular = NSFont.systemFont(ofSize: size, weight: .regular)
+                let desc = regular.fontDescriptor.withSymbolicTraits(.italic)
+                base = NSFont(descriptor: desc, size: size) ?? regular
+            } else {
+                base = NSFont.systemFont(ofSize: size, weight: .regular)
+            }
+            return base
+        }
+
+        // Non-system fonts: use NSFontManager trait conversion
+        let fm = NSFontManager.shared
+        var result = font
+        if bold {
+            result = fm.convert(result, toHaveTrait: .boldFontMask)
+        } else {
+            result = fm.convert(result, toNotHaveTrait: .boldFontMask)
+        }
+        if italic {
+            result = fm.convert(result, toHaveTrait: .italicFontMask)
+        } else {
+            result = fm.convert(result, toNotHaveTrait: .italicFontMask)
+        }
+        return result
     }
 
     private func toggleTextUnderline() {
@@ -6888,6 +7350,17 @@ class OverlayView: NSView {
                 copyColorAtSamplerPoint()
                 return
             }
+            // Auto-measure: hold "1" = vertical preview, hold "2" = horizontal preview
+            if state == .selected && currentTool == .measure && textEditView == nil &&
+               !event.modifierFlags.contains(.command) {
+                if let char = event.charactersIgnoringModifiers {
+                    if char == "1" || char == "2" {
+                        autoMeasureVertical = (char == "1")
+                        updateAutoMeasurePreview()
+                        return
+                    }
+                }
+            }
             // Single-key tool shortcuts (only when selected, not editing text, no modifiers)
             if state == .selected && textEditView == nil &&
                !event.modifierFlags.contains(.command) && !event.modifierFlags.contains(.option) &&
@@ -6946,6 +7419,22 @@ class OverlayView: NSView {
         }
     }
 
+    override func keyUp(with event: NSEvent) {
+        // Commit auto-measure preview on key release
+        if let preview = autoMeasurePreview {
+            if let char = event.charactersIgnoringModifiers, char == "1" || char == "2" {
+                annotations.append(preview)
+                undoStack.append(.added(preview))
+                redoStack.removeAll()
+                autoMeasurePreview = nil
+                cachedCompositedImage = nil
+                needsDisplay = true
+                return
+            }
+        }
+        super.keyUp(with: event)
+    }
+
     // MARK: - Undo/Redo
 
     func undo() {
@@ -6976,6 +7465,13 @@ class OverlayView: NSView {
             annotations.insert(ann, at: safeIdx)
             if ann.tool == .number { numberCounter += 1 }
             redoStack.append(.deleted(ann, idx))
+        case .imageTransform(let previousImage, _):
+            // Undo crop/flip — swap the current image with the saved one
+            let currentImage = screenshotImage?.copy() as? NSImage ?? previousImage
+            redoStack.append(.imageTransform(previousImage: currentImage, annotationOffsets: []))
+            screenshotImage = previousImage
+            cachedCompositedImage = nil
+            resetZoom()
         }
         needsDisplay = true
     }
@@ -7019,6 +7515,13 @@ class OverlayView: NSView {
             annotations.removeAll { $0 === ann }
             if ann.tool == .number { numberCounter = max(0, numberCounter - 1) }
             undoStack.append(.deleted(ann, idx))
+        case .imageTransform(let redoImage, _):
+            // Redo crop/flip — swap back
+            let currentImage = screenshotImage?.copy() as? NSImage ?? redoImage
+            undoStack.append(.imageTransform(previousImage: currentImage, annotationOffsets: []))
+            screenshotImage = redoImage
+            cachedCompositedImage = nil
+            resetZoom()
         }
         needsDisplay = true
     }
@@ -7581,6 +8084,7 @@ class OverlayView: NSView {
         isTranslating = false
         translateEnabled = false
         moveMode = false
+        autoMeasurePreview = nil
         selectedAnnotation = nil
         isDraggingAnnotation = false
         toolBeforeSelect = nil

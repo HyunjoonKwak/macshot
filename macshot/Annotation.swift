@@ -190,7 +190,7 @@ class Annotation {
         case .text:
             return textDrawRect.insetBy(dx: -threshold, dy: -threshold).contains(point)
         case .number:
-            let radius = max(14, strokeWidth * 4) + threshold
+            let radius = 8 + strokeWidth * 3 + threshold
             return hypot(point.x - startPoint.x, point.y - startPoint.y) < radius
         default:
             return false
@@ -241,7 +241,7 @@ class Annotation {
         case .text:
             highlightRect = textDrawRect != .zero ? textDrawRect : boundingRect
         case .number:
-            let radius = max(14, strokeWidth * 4)
+            let radius = 8 + strokeWidth * 3
             highlightRect = NSRect(x: startPoint.x - radius, y: startPoint.y - radius, width: radius * 2, height: radius * 2)
         case .loupe:
             highlightRect = boundingRect
@@ -538,17 +538,51 @@ class Annotation {
 
     private func drawNumber() {
         guard let number = number else { return }
-        let radius: CGFloat = max(14, strokeWidth * 4)
+        let radius: CGFloat = 8 + strokeWidth * 3
         let center = startPoint
-        let circleRect = NSRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
 
+        // Draw pointer cone if dragged (startPoint != endPoint)
+        let dx = endPoint.x - startPoint.x
+        let dy = endPoint.y - startPoint.y
+        let dist = hypot(dx, dy)
+        if dist > 4 {
+            let angle = atan2(dy, dx)
+            // Cone base width tapers from the circle edge, narrowing to a point
+            let baseHalfWidth = radius * 0.55
+            let perpAngle = angle + .pi / 2
+
+            // Base points on the circle's edge
+            let baseL = NSPoint(x: center.x + baseHalfWidth * cos(perpAngle),
+                                y: center.y + baseHalfWidth * sin(perpAngle))
+            let baseR = NSPoint(x: center.x - baseHalfWidth * cos(perpAngle),
+                                y: center.y - baseHalfWidth * sin(perpAngle))
+
+            let cone = NSBezierPath()
+            cone.move(to: baseL)
+            cone.line(to: endPoint)
+            cone.line(to: baseR)
+            cone.close()
+            color.setFill()
+            cone.fill()
+        }
+
+        // Draw the circle on top of the cone
+        let circleRect = NSRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
         color.setFill()
         NSBezierPath(ovalIn: circleRect).fill()
 
+        // Choose contrasting text color: black for light backgrounds, white for dark
+        let textColor: NSColor = {
+            guard let rgb = color.usingColorSpace(.sRGB) else { return .white }
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            rgb.getRed(&r, green: &g, blue: &b, alpha: &a)
+            let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+            return luminance > 0.6 ? .black : .white
+        }()
         let fontSize = radius * 1.1
         let attrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.boldSystemFont(ofSize: fontSize),
-            .foregroundColor: NSColor.white
+            .foregroundColor: textColor
         ]
         let str = "\(number)" as NSString
         let size = str.size(withAttributes: attrs)

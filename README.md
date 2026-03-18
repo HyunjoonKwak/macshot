@@ -17,11 +17,13 @@ macshot lives in your menu bar and lets you capture, annotate, and share screens
 - **Scroll capture** — select a region and scroll normally; macshot stitches each strip into one seamless tall image using Apple Vision for pixel-perfect alignment; works at any speed, handles upward and downward scrolling
 - **Screen recording** — record any region as MP4 (H.264) or GIF; interact with apps normally while recording, or toggle annotation mode to draw on the live screen; recordings saved to your configured folder
 - **Instant capture** — global hotkey (default: `Cmd+Shift+X`) freezes your screen and lets you select a region
-- **Editor window** — open any capture in a standalone resizable editor window; annotate, crop, copy, save, pin, or upload without dismissing the overlay
-- **Crop tool** — editor window only; drag a rectangle to crop the image in place, annotations translate automatically
+- **Editor window** — open any capture in a standalone resizable editor window with a top bar showing pixel dimensions, crop, flip H/V, and zoom level; annotate, crop, copy, save, pin, or upload without dismissing the overlay
+- **Crop tool** — editor window only; drag a rectangle (with rule-of-thirds grid) to crop the image in place, annotations translate automatically; fully undoable
+- **Flip image** — flip horizontally or vertically in the editor; annotations are mirrored to match; fully undoable
+- **Auto-measure** — with the measure tool, hold `1` for automatic vertical or `2` for horizontal measurement; scans pixels outward from cursor until color changes
 - **Window snap** — hover over any window to highlight it with a blue border and click to snap to it; `Tab` toggles snap mode, `F` captures full screen
 - **Live QR & barcode detection** — automatically detects QR codes and barcodes in the selected area; shows an inline bar to open URLs or copy the payload
-- **Annotation tools** — arrow, line, rectangle, filled rectangle, ellipse, pencil (with optional smooth strokes), marker/highlighter, text, numbered markers, pixelate, Gaussian blur
+- **Annotation tools** — arrow, line, rectangle, filled rectangle, ellipse, pencil (with optional smooth strokes), marker/highlighter, text, numbered markers (with optional pointer cone), pixelate, Gaussian blur
 - **Color opacity** — drag the opacity slider in the color picker to set transparency for all drawing tools; marker keeps its own highlight opacity
 - **Hover-to-move** — hover over any annotation with a drawing tool active to instantly drag, resize, or delete it without switching to the Select tool
 - **Rich text** — bold, italic, underline, strikethrough, adjustable font size; `Enter` inserts a new line; confirm with ✓ button
