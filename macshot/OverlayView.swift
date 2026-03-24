@@ -643,6 +643,7 @@ class OverlayView: NSView {
     // MARK: - Setup
 
     override var acceptsFirstResponder: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var isFlipped: Bool { false }
 
     override func viewDidMoveToWindow() {
@@ -5167,6 +5168,27 @@ class OverlayView: NSView {
         needsDisplay = true
     }
 
+    private func invertImageColors() {
+        guard let original = screenshotImage,
+              let cgImage = original.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+
+        let prevImage = original.copy() as! NSImage
+        undoStack.append(.imageTransform(previousImage: prevImage, annotationOffsets: []))
+        redoStack.removeAll()
+
+        let ciImage = CIImage(cgImage: cgImage)
+        guard let filter = CIFilter(name: "CIColorInvert") else { return }
+        filter.setValue(ciImage, forKey: kCIInputImageKey)
+        guard let output = filter.outputImage else { return }
+
+        let ciCtx = CIContext()
+        guard let inverted = ciCtx.createCGImage(output, from: output.extent) else { return }
+
+        screenshotImage = NSImage(cgImage: inverted, size: original.size)
+        cachedCompositedImage = nil
+        needsDisplay = true
+    }
+
     // MARK: - Snap/Alignment Guides
 
     /// Collect all snap target X and Y values from the selection rect and existing annotations.
@@ -7899,8 +7921,8 @@ class OverlayView: NSView {
             return
         }
 
-        // Cmd+scroll → zoom
-        guard isCommandScroll else { return }
+        // Cmd+scroll or plain mouse wheel (non-trackpad) → zoom
+        guard isCommandScroll || !isTrackpadPhased else { return }
         let cursor = convert(event.locationInWindow, from: nil)
         let delta = event.deltaY
         let factor: CGFloat = 0.1
@@ -8048,6 +8070,8 @@ class OverlayView: NSView {
             if #available(macOS 14.0, *) {
                 overlayDelegate?.overlayViewDidRequestRemoveBackground()
             }
+        case .invertColors:
+            invertImageColors()
         case .beautify:
             commitTextFieldIfNeeded()
             showFontPicker = false
@@ -9861,15 +9885,39 @@ class OverlayView: NSView {
     func captureSelectedRegion() -> NSImage? {
         guard selectionRect.width > 0, selectionRect.height > 0 else { return nil }
 
-        let image = NSImage(size: selectionRect.size)
-        image.lockFocus()
-
-        guard let context = NSGraphicsContext.current else {
-            image.unlockFocus()
-            return nil
+        // Determine the source image's actual pixel scale so we render at
+        // native resolution instead of relying on lockFocus() which always
+        // picks the highest backing scale of any connected display.  This
+        // prevents interpolation-upscaling when a 1x external monitor is
+        // captured while a Retina display is also connected.
+        let scale: CGFloat
+        if let screenshot = screenshotImage,
+           let cg = screenshot.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+            scale = CGFloat(cg.width) / screenshot.size.width
+        } else {
+            scale = window?.backingScaleFactor ?? 2.0
         }
 
-        context.cgContext.translateBy(x: -selectionRect.origin.x, y: -selectionRect.origin.y)
+        let pixelW = Int(selectionRect.width * scale)
+        let pixelH = Int(selectionRect.height * scale)
+        let cs = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+        guard let cgCtx = CGContext(
+            data: nil,
+            width: pixelW, height: pixelH,
+            bitsPerComponent: 8,
+            bytesPerRow: pixelW * 4,
+            space: cs,
+            bitmapInfo: bitmapInfo
+        ) else { return nil }
+
+        // Scale the CG context so drawing in points maps to the correct pixels.
+        cgCtx.scaleBy(x: scale, y: scale)
+        cgCtx.translateBy(x: -selectionRect.origin.x, y: -selectionRect.origin.y)
+
+        let nsContext = NSGraphicsContext(cgContext: cgCtx, flipped: false)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = nsContext
 
         if let screenshot = screenshotImage {
             // In editor mode the image is at selectionRect (natural size);
@@ -9879,10 +9927,13 @@ class OverlayView: NSView {
         }
 
         for annotation in annotations {
-            annotation.draw(in: context)
+            annotation.draw(in: nsContext)
         }
 
-        image.unlockFocus()
+        NSGraphicsContext.restoreGraphicsState()
+
+        guard let cgImage = cgCtx.makeImage() else { return nil }
+        let image = NSImage(cgImage: cgImage, size: selectionRect.size)
         return image
     }
 

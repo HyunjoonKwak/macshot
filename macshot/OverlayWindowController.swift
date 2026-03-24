@@ -72,7 +72,6 @@ class OverlayWindowController {
         if let view = overlayView {
             window.makeFirstResponder(view)
         }
-        NSApp.activate(ignoringOtherApps: true)
     }
 
     func applySelection(_ rect: NSRect) {

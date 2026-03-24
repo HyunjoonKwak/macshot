@@ -21,6 +21,7 @@ enum ToolbarButtonAction {
     case delayCapture
     case upload
     case removeBackground
+    case invertColors
     case loupe
     case translate
     case record          // enters recording mode (shows recording toolbar)
@@ -147,6 +148,11 @@ class ToolbarLayout {
 
         // Auto-redact moved to blur/pixelate options row
 
+        // Invert colors (tag 1011)
+        if !isRecording && actionEnabled(1011) {
+            buttons.append(ToolbarButton(action: .invertColors, sfSymbol: "circle.righthalf.filled.inverse", label: nil, tooltip: "Invert Colors"))
+        }
+
         if !isRecording && actionEnabled(1004) {
             var beautifyBtn = ToolbarButton(action: .beautify, sfSymbol: "sparkles", label: nil, tooltip: "Beautify")
             if beautifyEnabled {
@@ -199,7 +205,7 @@ class ToolbarLayout {
             return buttons
         }
 
-        let allKnownActionTags: [Int] = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010]
+        let allKnownActionTags: [Int] = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011]
         // Migrate: only add action tags that are brand-new (never seen before).
         // knownActionTags tracks which tags have been introduced so user-disabled tags are
         // never silently re-enabled when future versions add new action tags.

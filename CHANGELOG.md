@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.0.8] - 2026-03-24
+
+### Added
+- **Invert Colors** — new toolbar button to invert colors in the selected region. Apply twice to revert. Supports undo. Can be disabled in Preferences → Tools.
+- **Mouse wheel zoom** — scroll wheel now zooms in/out without holding Cmd (trackpad behavior unchanged).
+
+### Fixed
+- **First click ignored on slower Macs** — overlay now accepts clicks immediately via `acceptsFirstMouse`, fixing a race condition where the first selection drag was dropped on Intel Macs or when app activation was slow.
+- **Blurry captures on mixed-DPI setups** — screenshots from a 1x external monitor were being interpolation-upscaled to 2x when a Retina display was also connected. Output now matches the source display's native pixel density.
+
 ## [3.0.7] - 2026-03-24
 
 ### Added

@@ -99,6 +99,7 @@ brew install sw33tlie/macshot/macshot
 
 ### Other
 - **OCR** — extract text with Apple Vision, translate to 30+ languages
+- **Invert colors** — one-click color inversion, apply twice to revert
 - **Background removal** — Apple Vision foreground mask (macOS 14+)
 - **Pin to screen** — floating always-on-top window
 - **Floating thumbnail** — auto-dismiss preview with Copy/Save/Pin/Edit/Upload

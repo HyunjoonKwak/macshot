@@ -516,6 +516,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate {
             (1007, "Delay capture"), (1008, "Translate"),
             (1009, "Record screen"),
             (1010, "Scroll Capture"),
+            (1011, "Invert Colors"),
         ]
         let enabledActions = UserDefaults.standard.array(forKey: "enabledActions") as? [Int]
         let actionsGrid = makeToggleGrid(items: actionItems,

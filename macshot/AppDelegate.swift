@@ -258,6 +258,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
 
+            NSApp.activate(ignoringOtherApps: true)
+
             for capture in captures {
                 let controller = OverlayWindowController(capture: capture)
                 controller.overlayDelegate = self
@@ -663,6 +665,8 @@ extension AppDelegate: OverlayWindowControllerDelegate {
                 self.isCapturing = false
                 return
             }
+
+            NSApp.activate(ignoringOtherApps: true)
 
             for capture in captures {
                 let controller = OverlayWindowController(capture: capture)
