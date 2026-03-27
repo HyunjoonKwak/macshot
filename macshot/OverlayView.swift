@@ -96,6 +96,8 @@ class OverlayView: NSView {
 
     // Selection
     private(set) var selectionRect: NSRect = .zero
+    /// Selection rect from another overlay (in this view's local coords), drawn during cross-screen drag.
+    var remoteSelectionRect: NSRect = .zero
     private var selectionStart: NSPoint = .zero
     private var isDraggingSelection: Bool = false
     private var isResizingSelection: Bool = false
@@ -1308,6 +1310,18 @@ class OverlayView: NSView {
             drawIdleHelperText()
         } else if state == .selecting {
             drawSelectingHelperText()
+        }
+
+        // Draw remote selection region (cross-screen drag from another overlay)
+        if remoteSelectionRect.width >= 1 && remoteSelectionRect.height >= 1 {
+            if shouldClipSelectionImage() {
+                context.saveGraphicsState()
+                NSBezierPath(rect: remoteSelectionRect).setClip()
+                if let image = screenshotImage {
+                    image.draw(in: bounds, from: .zero, operation: .copy, fraction: 1.0)
+                }
+                context.restoreGraphicsState()
+            }
         }
 
         // Draw clear selection region
@@ -7519,6 +7533,7 @@ class OverlayView: NSView {
             let x = selectionStart.x < point.x ? selectionStart.x : selectionStart.x - w
             let y = selectionStart.y < point.y ? selectionStart.y : selectionStart.y - h
             selectionRect = NSRect(x: x, y: y, width: w, height: h)
+            overlayDelegate?.overlayViewSelectionDidChange(selectionRect)
             needsDisplay = true
 
         case .selected:
@@ -10299,6 +10314,7 @@ class OverlayView: NSView {
     func clearSelection() {
         state = .idle
         selectionRect = .zero
+        remoteSelectionRect = .zero
         showToolbars = false
         needsDisplay = true
     }
@@ -10306,6 +10322,7 @@ class OverlayView: NSView {
     func reset() {
         state = .idle
         selectionRect = .zero
+        remoteSelectionRect = .zero
         annotations.removeAll()
         undoStack.removeAll()
         redoStack.removeAll()

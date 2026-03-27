@@ -502,16 +502,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Returns the title of the currently focused window via Accessibility API, or nil.
+    /// Returns the title of the frontmost window via CGWindowList (requires Screen Recording permission).
     private static func focusedWindowTitle() -> String? {
         guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
-        let appElement = AXUIElementCreateApplication(app.processIdentifier)
-        var focusedWindow: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedWindow) == .success else { return nil }
-        var titleValue: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(focusedWindow as! AXUIElement, kAXTitleAttribute as CFString, &titleValue) == .success else { return nil }
-        guard let title = titleValue as? String, !title.isEmpty else { return nil }
-        return title
+        let pid = app.processIdentifier
+        guard let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return nil }
+        for info in windowList {
+            guard let layer = info[kCGWindowLayer as String] as? Int, layer == 0,
+                  let ownerPID = info[kCGWindowOwnerPID as String] as? pid_t, ownerPID == pid,
+                  let name = info[kCGWindowName as String] as? String, !name.isEmpty else { continue }
+            return name
+        }
+        return nil
     }
 
     private func restoreLastSelectionIfNeeded(controllers: [OverlayWindowController]) {
@@ -764,6 +766,57 @@ extension AppDelegate: OverlayWindowControllerDelegate {
         }
     }
 
+    private func stitchCrossScreenCapture(primary: OverlayWindowController, others: [OverlayWindowController]) -> NSImage? {
+        let primaryOrigin = primary.screen.frame.origin
+        let primarySelRect = primary.selectionRect
+        // Global selection rect
+        let globalRect = NSRect(x: primarySelRect.origin.x + primaryOrigin.x,
+                                y: primarySelRect.origin.y + primaryOrigin.y,
+                                width: primarySelRect.width, height: primarySelRect.height)
+
+        // Determine scale from primary screen
+        let scale: CGFloat
+        if let screenshot = primary.screenshotImage,
+           let cg = screenshot.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+            scale = CGFloat(cg.width) / screenshot.size.width
+        } else {
+            scale = primary.screen.backingScaleFactor
+        }
+
+        let pixelW = Int(globalRect.width * scale)
+        let pixelH = Int(globalRect.height * scale)
+        let cs = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        guard let cgCtx = CGContext(data: nil, width: pixelW, height: pixelH,
+                                     bitsPerComponent: 8, bytesPerRow: pixelW * 4,
+                                     space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+
+        cgCtx.scaleBy(x: scale, y: scale)
+
+        // Draw each screen's contribution
+        let allControllers = [primary] + others
+        for controller in allControllers {
+            guard let screenshot = controller.screenshotImage else { continue }
+            let screenFrame = controller.screen.frame
+            // Where this screen sits relative to the global selection rect
+            let drawX = screenFrame.origin.x - globalRect.origin.x
+            let drawY = screenFrame.origin.y - globalRect.origin.y
+            let drawRect = NSRect(x: drawX, y: drawY, width: screenFrame.width, height: screenFrame.height)
+
+            cgCtx.saveGState()
+            // Clip to only the portion within our output bounds
+            cgCtx.clip(to: CGRect(x: 0, y: 0, width: globalRect.width, height: globalRect.height))
+            let nsContext = NSGraphicsContext(cgContext: cgCtx, flipped: false)
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = nsContext
+            screenshot.draw(in: drawRect, from: .zero, operation: .copy, fraction: 1.0)
+            NSGraphicsContext.restoreGraphicsState()
+            cgCtx.restoreGState()
+        }
+
+        guard let cgImage = cgCtx.makeImage() else { return nil }
+        return NSImage(cgImage: cgImage, size: globalRect.size)
+    }
+
     func overlayDidRequestPin(_ controller: OverlayWindowController, image: NSImage) {
         ScreenshotHistory.shared.add(image: image)
         dismissOverlays()
@@ -854,7 +907,25 @@ extension AppDelegate: OverlayWindowControllerDelegate {
     func overlayDidBeginSelection(_ controller: OverlayWindowController) {
         for other in overlayControllers where other !== controller {
             other.clearSelection()
+            other.setRemoteSelection(.zero)
         }
+    }
+
+    func overlayDidChangeSelection(_ controller: OverlayWindowController, globalRect: NSRect) {
+        for other in overlayControllers where other !== controller {
+            let otherOrigin = other.screen.frame.origin
+            let localRect = NSRect(x: globalRect.origin.x - otherOrigin.x,
+                                   y: globalRect.origin.y - otherOrigin.y,
+                                   width: globalRect.width, height: globalRect.height)
+            let clipped = localRect.intersection(NSRect(origin: .zero, size: other.screen.frame.size))
+            other.setRemoteSelection(clipped.isEmpty ? .zero : clipped)
+        }
+    }
+
+    func overlayCrossScreenImage(_ controller: OverlayWindowController) -> NSImage? {
+        let others = overlayControllers.filter { $0 !== controller && $0.remoteSelectionRect.width >= 1 && $0.remoteSelectionRect.height >= 1 }
+        guard !others.isEmpty else { return nil }
+        return stitchCrossScreenCapture(primary: controller, others: others)
     }
 
     private func handleScrollCaptureCompleted(finalImage: NSImage?) {

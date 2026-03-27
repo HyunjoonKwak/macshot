@@ -15,6 +15,8 @@ protocol OverlayWindowControllerDelegate: AnyObject {
     func overlayDidRequestScrollCapture(_ controller: OverlayWindowController, rect: NSRect, screen: NSScreen)
     func overlayDidRequestStopScrollCapture(_ controller: OverlayWindowController)
     func overlayDidBeginSelection(_ controller: OverlayWindowController)
+    func overlayDidChangeSelection(_ controller: OverlayWindowController, globalRect: NSRect)
+    func overlayCrossScreenImage(_ controller: OverlayWindowController) -> NSImage?
 }
 
 /// Manages one fullscreen overlay per screen.
@@ -31,6 +33,9 @@ class OverlayWindowController {
     private var recordingControlView: RecordingControlView?
     var windowNumber: CGWindowID { overlayWindow.map { CGWindowID($0.windowNumber) } ?? CGWindowID.max }
     private(set) var screen: NSScreen = NSScreen.main ?? NSScreen.screens.first ?? NSScreen()
+    var screenshotImage: NSImage? { overlayView?.screenshotImage }
+    var selectionRect: NSRect { overlayView?.selectionRect ?? .zero }
+    var remoteSelectionRect: NSRect { overlayView?.remoteSelectionRect ?? .zero }
 
     init(capture: ScreenCapture) {
         let screen = capture.screen
@@ -81,6 +86,11 @@ class OverlayWindowController {
 
     func clearSelection() {
         overlayView?.clearSelection()
+    }
+
+    func setRemoteSelection(_ rect: NSRect) {
+        overlayView?.remoteSelectionRect = rect
+        overlayView?.needsDisplay = true
     }
 
     /// Auto-select the full screen (as if user clicked without dragging).
@@ -241,6 +251,10 @@ class OverlayWindowController {
         AppDelegate.captureSound?.play()
     }
 
+    private func captureRegion() -> NSImage? {
+        return overlayDelegate?.overlayCrossScreenImage(self) ?? overlayView?.captureSelectedRegion()
+    }
+
     private func applyBeautifyIfNeeded(_ image: NSImage?) -> NSImage? {
         guard let image = image, let view = overlayView, view.beautifyEnabled else { return image }
         return BeautifyRenderer.render(image: image, config: view.beautifyConfig)
@@ -264,6 +278,11 @@ extension OverlayWindowController: OverlayViewDelegate {
     }
 
     func overlayViewSelectionDidChange(_ rect: NSRect) {
+        let screenOrigin = screen.frame.origin
+        let globalRect = NSRect(x: rect.origin.x + screenOrigin.x,
+                                y: rect.origin.y + screenOrigin.y,
+                                width: rect.width, height: rect.height)
+        overlayDelegate?.overlayDidChangeSelection(self, globalRect: globalRect)
     }
 
     func overlayViewDidCancel() {
@@ -274,8 +293,7 @@ extension OverlayWindowController: OverlayViewDelegate {
     func overlayViewDidConfirm() {
         let autoCopy = UserDefaults.standard.object(forKey: "autoCopyToClipboard") as? Bool ?? true
 
-        // Capture image BEFORE dismiss destroys the view
-        var capturedImage = overlayView?.captureSelectedRegion()
+        var capturedImage = captureRegion()
         capturedImage = applyBeautifyIfNeeded(capturedImage)
 
         if autoCopy, let image = capturedImage {
@@ -288,7 +306,7 @@ extension OverlayWindowController: OverlayViewDelegate {
     }
 
     func overlayViewDidRequestPin() {
-        guard var image = overlayView?.captureSelectedRegion() else { return }
+        guard var image = captureRegion() else { return }
         image = applyBeautifyIfNeeded(image) ?? image
         playCopySound()
         dismiss()
@@ -296,7 +314,7 @@ extension OverlayWindowController: OverlayViewDelegate {
     }
 
     func overlayViewDidRequestOCR() {
-        guard let image = overlayView?.captureSelectedRegion() else { return }
+        guard let image = captureRegion() else { return }
         guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
 
         let request = VisionOCR.makeTextRecognitionRequest { [weak self] request, error in
@@ -325,7 +343,7 @@ extension OverlayWindowController: OverlayViewDelegate {
     }
 
     func overlayViewDidRequestUpload() {
-        guard var image = overlayView?.captureSelectedRegion() else { return }
+        guard var image = captureRegion() else { return }
         image = applyBeautifyIfNeeded(image) ?? image
         playCopySound()
         dismiss()
@@ -333,7 +351,7 @@ extension OverlayWindowController: OverlayViewDelegate {
     }
 
     func overlayViewDidRequestShare() {
-        guard var image = overlayView?.captureSelectedRegion() else { return }
+        guard var image = captureRegion() else { return }
         image = applyBeautifyIfNeeded(image) ?? image
         guard let imageData = ImageEncoder.encode(image) else { return }
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -400,8 +418,8 @@ extension OverlayWindowController: OverlayViewDelegate {
         guard let view = overlayView else { return }
         let sel = view.selectionRect
 
-        // Crop just the raw screenshot (no annotations) to the selection area.
-        let croppedImage: NSImage? = {
+        // Use stitched cross-screen image if available, otherwise crop from single screen.
+        let croppedImage: NSImage? = overlayDelegate?.overlayCrossScreenImage(self) ?? {
             guard let src = view.screenshotImage else { return nil }
             let img = NSImage(size: sel.size, flipped: false) { _ in
                 src.draw(in: NSRect(origin: .zero, size: sel.size),
@@ -431,7 +449,7 @@ extension OverlayWindowController: OverlayViewDelegate {
 
     @available(macOS 14.0, *)
     func overlayViewDidRequestRemoveBackground() {
-        guard var image = overlayView?.captureSelectedRegion() else { return }
+        guard var image = captureRegion() else { return }
         image = applyBeautifyIfNeeded(image) ?? image
         
         guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
@@ -485,7 +503,7 @@ extension OverlayWindowController: OverlayViewDelegate {
     }
 
     func overlayViewDidRequestQuickSave() {
-        guard let image = overlayView?.captureSelectedRegion() else {
+        guard let image = captureRegion() else {
             dismiss()
             overlayDelegate?.overlayDidCancel(self)
             return
@@ -529,7 +547,7 @@ extension OverlayWindowController: OverlayViewDelegate {
     }
 
     func overlayViewDidRequestSave() {
-        guard var image = overlayView?.captureSelectedRegion() else { return }
+        guard var image = captureRegion() else { return }
         image = applyBeautifyIfNeeded(image) ?? image
         guard let imageData = ImageEncoder.encode(image) else { return }
 
