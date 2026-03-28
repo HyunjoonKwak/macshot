@@ -278,8 +278,6 @@ class OverlayView: NSView {
     private var beautifyModeRoundedRect: NSRect = .zero
     private var beautifyBgRadiusSliderRect: NSRect = .zero
     private var beautifySwatchRects: [NSRect] = []
-    private var showBeautifyGradientPicker: Bool = false
-    private var beautifyGradientPickerRect: NSRect = .zero
     private var beautifyGradientBtnRect: NSRect = .zero
     private var beautifyToggleRect: NSRect = .zero
     private var beautifyToolbarAnimProgress: CGFloat = 1.0  // 0..1, 1 = fully settled
@@ -978,7 +976,6 @@ class OverlayView: NSView {
         if showToolbars && (bottomBarRect.contains(point) || rightBarRect.contains(point) || optionsRowRect.contains(point)) { NSCursor.arrow.set(); return }
         if showColorPicker && colorPickerRect.contains(point) { NSCursor.arrow.set(); return }
         
-        if showBeautifyGradientPicker && beautifyGradientPickerRect.contains(point) { NSCursor.arrow.set(); return }
         
         
         if showUploadConfirmDialog && uploadConfirmDialogRect.contains(point) { NSCursor.arrow.set(); return }
@@ -1544,9 +1541,6 @@ class OverlayView: NSView {
                 // Redact type picker
 
                 // Beautify gradient picker
-                if showBeautifyGradientPicker {
-                    drawBeautifyGradientPicker()
-                }
 
                 // Translate language picker
 
@@ -1612,7 +1606,7 @@ class OverlayView: NSView {
         guard hoveredButtonIndex >= 0 else { return }
 
         // Hide tooltip when any picker/popover is open (they overlap)
-        if PopoverHelper.isVisible || showColorPicker || showEmojiPicker || showBeautifyGradientPicker {
+        if PopoverHelper.isVisible || showColorPicker || showEmojiPicker {
             return
         }
 
@@ -2448,7 +2442,7 @@ class OverlayView: NSView {
     }
 
     /// Draw a gradient swatch — uses mesh rendering on macOS 15+ for mesh styles, linear otherwise.
-    private func drawStyleSwatch(style: BeautifyStyle, path: NSBezierPath, rect: NSRect) {
+    func drawStyleSwatch(style: BeautifyStyle, path: NSBezierPath, rect: NSRect) {
         if #available(macOS 15.0, *), let mesh = style.meshDef {
             if let img = BeautifyRenderer.renderMeshSwatch(mesh, size: max(rect.width, rect.height)) {
                 NSGraphicsContext.saveGraphicsState()
@@ -4010,63 +4004,6 @@ class OverlayView: NSView {
         NSColor.white.setFill()
         NSBezierPath(ovalIn: knobRect).fill()
     }
-
-    private func drawBeautifyGradientPicker() {
-        let styles = BeautifyRenderer.styles
-        let cols = 6
-        let rows = (styles.count + cols - 1) / cols
-        let swSize: CGFloat = 28
-        let padding: CGFloat = 8
-        let gap: CGFloat = 4
-        let pickerW = padding * 2 + CGFloat(cols) * swSize + CGFloat(cols - 1) * gap
-        let pickerH = padding * 2 + CGFloat(rows) * swSize + CGFloat(rows - 1) * gap
-
-        // Position above/below the gradient button
-        let anchorRect = beautifyGradientBtnRect
-        let pickerX = max(bounds.minX + 4, min(anchorRect.midX - pickerW / 2, bounds.maxX - pickerW - 4))
-        var pickerY: CGFloat
-        if optionsRowRect.midY < selectionRect.midY {
-            pickerY = optionsRowRect.minY - pickerH - 4
-            if pickerY < bounds.minY + 4 { pickerY = optionsRowRect.maxY + 4 }
-        } else {
-            pickerY = optionsRowRect.maxY + 4
-            if pickerY + pickerH > bounds.maxY - 4 { pickerY = optionsRowRect.minY - pickerH - 4 }
-        }
-        pickerY = max(bounds.minY + 4, min(pickerY, bounds.maxY - pickerH - 4))
-
-        let pRect = NSRect(x: pickerX, y: pickerY, width: pickerW, height: pickerH)
-        beautifyGradientPickerRect = pRect
-
-        // Background
-        NSColor(white: 0.10, alpha: 0.95).setFill()
-        NSBezierPath(roundedRect: pRect, xRadius: 8, yRadius: 8).fill()
-        NSColor.white.withAlphaComponent(0.1).setStroke()
-        let border = NSBezierPath(roundedRect: pRect, xRadius: 8, yRadius: 8)
-        border.lineWidth = 0.5
-        border.stroke()
-
-        // Draw gradient swatches in grid
-        beautifySwatchRects = []
-        for (i, style) in styles.enumerated() {
-            let col = i % cols
-            let row = i / cols
-            let sx = pRect.minX + padding + CGFloat(col) * (swSize + gap)
-            let sy = pRect.maxY - padding - swSize - CGFloat(row) * (swSize + gap)
-            let sr = NSRect(x: sx, y: sy, width: swSize, height: swSize)
-            beautifySwatchRects.append(sr)
-
-            let path = NSBezierPath(roundedRect: sr, xRadius: 6, yRadius: 6)
-            drawStyleSwatch(style: style, path: path, rect: sr)
-
-            if i == beautifyStyleIndex % styles.count {
-                ToolbarLayout.accentColor.setStroke()
-                let selRing = NSBezierPath(roundedRect: sr.insetBy(dx: -2, dy: -2), xRadius: 7, yRadius: 7)
-                selRing.lineWidth = 2
-                selRing.stroke()
-            }
-        }
-    }
-
     private func drawOptionsSlider(rect: NSRect, value: CGFloat, min minVal: CGFloat, max maxVal: CGFloat) {
         let trackH: CGFloat = 3
         let knobR: CGFloat = 6
@@ -6171,26 +6108,6 @@ class OverlayView: NSView {
             return
         }
 
-        // Beautify gradient picker dismissal / selection
-        if showBeautifyGradientPicker {
-            if beautifyGradientPickerRect.contains(point) {
-                for (i, sr) in beautifySwatchRects.enumerated() {
-                    if sr.insetBy(dx: -2, dy: -2).contains(point) {
-                        beautifyStyleIndex = i
-                        UserDefaults.standard.set(beautifyStyleIndex, forKey: "beautifyStyleIndex")
-                        // Don't close picker — let user try gradients quickly
-                        needsDisplay = true
-                        return
-                    }
-                }
-                return  // clicked in picker but not on a swatch
-            }
-            showBeautifyGradientPicker = false
-            needsDisplay = true
-            if beautifyGradientBtnRect.insetBy(dx: -4, dy: -4).contains(point) {
-                return  // consume so toggle doesn't reopen
-            }
-        }
 
         // Emoji picker dismissal / selection
         if showEmojiPicker {
@@ -6354,8 +6271,8 @@ class OverlayView: NSView {
                             }
                         }
                         if beautifyGradientBtnRect != .zero && beautifyGradientBtnRect.insetBy(dx: -4, dy: -4).contains(point) {
-                            showBeautifyGradientPicker.toggle()
-                            needsDisplay = true
+                            PopoverHelper.dismiss()
+                            showBeautifyGradientPopover(anchorRect: beautifyGradientBtnRect)
                             return
                         }
                         return  // consumed by beautify options row
@@ -8566,9 +8483,8 @@ class OverlayView: NSView {
             } else if showEmojiPicker {
                 showEmojiPicker = false
                 needsDisplay = true
-            } else if showBeautifyGradientPicker {
-                showBeautifyGradientPicker = false
-                needsDisplay = true
+            } else if PopoverHelper.isVisible {
+                PopoverHelper.dismiss()
             } else {
                 overlayDelegate?.overlayViewDidCancel()
             }
@@ -9518,6 +9434,16 @@ class OverlayView: NSView {
         PopoverHelper.showAtPoint(picker, size: size, at: NSPoint(x: anchorRect.midX, y: anchorRect.midY), in: self, preferredEdge: .minX)
     }
 
+    func showBeautifyGradientPopover(anchorRect: NSRect) {
+        let picker = GradientPickerView(selectedIndex: beautifyStyleIndex)
+        picker.onSelect = { [weak self] idx in
+            self?.beautifyStyleIndex = idx
+            UserDefaults.standard.set(idx, forKey: "beautifyStyleIndex")
+            self?.needsDisplay = true
+        }
+        PopoverHelper.showAtPoint(picker, size: picker.preferredSize, at: NSPoint(x: anchorRect.midX, y: anchorRect.midY), in: self, preferredEdge: .minY)
+    }
+
     func reset() {
         state = .idle
         selectionRect = .zero
@@ -9533,7 +9459,6 @@ class OverlayView: NSView {
         uploadConfirmDialogRect = .zero
         uploadConfirmOKRect = .zero
         uploadConfirmCancelRect = .zero
-        showBeautifyGradientPicker = false
         showEmojiPicker = false
         stopMouseHighlightMonitor()
         isTranslating = false
