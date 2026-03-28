@@ -73,7 +73,6 @@ class OverlayView: NSView {
     var isInsideScrollView: Bool { false }
     /// When in scroll view mode, toolbar strips are added to this view (window content) instead of self.
     weak var chromeParentView: NSView?
-    var editorCanvasOffset: NSPoint = .zero  // rendering offset for centering image in editor (legacy, unused in scroll view mode)
 
     var screenshotImage: NSImage? {
         didSet { needsDisplay = true }
@@ -1000,33 +999,8 @@ class OverlayView: NSView {
         return selectionRect.contains(viewPoint)
     }
 
-    /// Override to draw editor background (dark canvas, centered image). Base does nothing.
+    /// Override point for editor background drawing. Base does nothing (overlay has no editor background).
     func drawEditorBackground(context: NSGraphicsContext) {
-        guard isEditorMode else { return }
-        let padLeft: CGFloat = 8
-        let padRight: CGFloat = 52  // right toolbar width
-        let optionsRowExtra: CGFloat = toolHasOptionsRow ? 36 : 0  // 34 row + 2 gap
-        let padBottom: CGFloat = 56 + optionsRowExtra  // bottom toolbar + options row + gap
-        let editorTopBarH: CGFloat = 32
-        let padTop: CGFloat = editorTopBarH + 4  // top bar + gap
-        let availW = bounds.width - padLeft - padRight
-        let availH = bounds.height - padBottom - padTop
-        let imgW = selectionRect.width
-        let imgH = selectionRect.height
-        let cx = padLeft + max(0, (availW - imgW) / 2)
-        let cy = padBottom + max(0, (availH - imgH) / 2)
-        editorCanvasOffset = NSPoint(x: cx, y: cy)
-
-        NSColor(white: 0.15, alpha: 1.0).setFill()
-        NSBezierPath(rect: bounds).fill()
-        // Draw image with canvas offset + zoom transform
-        context.saveGraphicsState()
-        context.cgContext.translateBy(x: editorCanvasOffset.x, y: editorCanvasOffset.y)
-        applyZoomTransform(to: context)
-        if let image = screenshotImage {
-            image.draw(in: selectionRect, from: .zero, operation: .copy, fraction: 1.0)
-        }
-        context.restoreGraphicsState()
     }
 
     /// Override to clip the selection image in overlay mode. Base returns true when not in editor mode.
@@ -1039,19 +1013,10 @@ class OverlayView: NSView {
     func shouldDrawSizeLabel() -> Bool { !isRecording && !isScrollCapturing && !isEditorMode }
 
     /// Override to draw top chrome (e.g. editor top bar). Base draws editor top bar when in editor mode.    /// Override to adjust a view-space point for editor canvas offset. Base returns point unchanged.
-    func adjustPointForEditor(_ p: NSPoint) -> NSPoint {
-        if isEditorMode {
-            return NSPoint(x: p.x - editorCanvasOffset.x, y: p.y - editorCanvasOffset.y)
-        }
-        return p
-    }
+    func adjustPointForEditor(_ p: NSPoint) -> NSPoint { p }
 
-    /// Override to apply editor-specific graphics context transform. Base translates by editorCanvasOffset when in editor mode.
-    func applyEditorTransform(to context: NSGraphicsContext) {
-        if isEditorMode {
-            context.cgContext.translateBy(x: editorCanvasOffset.x, y: editorCanvasOffset.y)
-        }
-    }
+    /// Override point for editor-specific graphics context transform. Base does nothing.
+    func applyEditorTransform(to context: NSGraphicsContext) {}
 
     /// Override to control whether selection resize handles are active. Base returns true when not in editor mode.
     func shouldAllowSelectionResize() -> Bool { !isEditorMode }
@@ -1062,26 +1027,8 @@ class OverlayView: NSView {
     /// Override to allow panning at 1x zoom. Base returns false.
     func canPanAtOneX() -> Bool { false }
 
-    /// Override to control whether the editor-specific zoom clamping applies. Base handles editor mode internally.
-    func clampZoomAnchorForEditor(r: NSRect, z: CGFloat, ac: NSPoint, av: inout NSPoint) {
-        if isEditorMode {
-            let viewW = bounds.width
-            let viewH = bounds.height
-            let imgH = r.height * z
-            let imgW = r.width * z
-
-            if imgH > viewH {
-                let maxAVy = r.minY - (r.minY - ac.y) * z + viewH * 0.1
-                let minAVy = r.maxY - (r.maxY - ac.y) * z - viewH * 0.1
-                av.y = max(minAVy, min(maxAVy, av.y))
-            }
-            if imgW > viewW {
-                let maxAVx = r.minX - (r.minX - ac.x) * z + viewW * 0.1
-                let minAVx = r.maxX - (r.maxX - ac.x) * z - viewW * 0.1
-                av.x = max(minAVx, min(maxAVx, av.x))
-            }
-        }
-    }
+    /// Override point for editor-specific zoom clamping. Base does nothing.
+    func clampZoomAnchorForEditor(r: NSRect, z: CGFloat, ac: NSPoint, av: inout NSPoint) {}
 
     /// Override to change the rect used when drawing the screenshot in `captureSelectedRegion`. Base returns bounds.
     var captureDrawRect: NSRect { isEditorMode ? selectionRect : bounds }
@@ -1101,8 +1048,7 @@ class OverlayView: NSView {
 
         // In editor mode: dark background, draw image centered at natural size (no stretch).
         // selectionRect stays at (0, 0, imgW, imgH) — annotations always use image-relative coords.
-        // editorCanvasOffset is a pure rendering offset applied via graphics context transform.
-        if isEditorMode {
+                if isEditorMode {
             drawEditorBackground(context: context)
         } else if isScrollCapturing {
             // During scroll capture: make the entire window transparent so the user sees
@@ -2840,11 +2786,7 @@ class OverlayView: NSView {
                 y: zoomAnchorView.y + (p.y - zoomAnchorCanvas.y) * zoomLevel
             )
         }
-        // Add editor offset
-        if isEditorMode {
-            q.x += editorCanvasOffset.x
-            q.y += editorCanvasOffset.y
-        }
+
         return q
     }
 
@@ -2884,10 +2826,9 @@ class OverlayView: NSView {
         let canvasUnderCursor = viewToCanvas(cursorView)
         zoomLevel = max(zoomMin, min(zoomMax, level))
         // After zoom change, pin that canvas point to the cursor's view position.
-        // In editor mode, zoomAnchorView is in offset-adjusted space (after editorCanvasOffset)
-        // because applyZoomTransform runs after the editor translate.
+                // because applyZoomTransform runs after the editor translate.
         zoomAnchorCanvas = canvasUnderCursor
-        zoomAnchorView = adjustPointForEditor(cursorView)
+        zoomAnchorView = cursorView
         clampZoomAnchor()
         showZoomLabel()
         needsDisplay = true
@@ -2953,7 +2894,6 @@ class OverlayView: NSView {
         selectionRect = NSRect(origin: .zero, size: croppedPointSize)
 
         cachedCompositedImage = nil
-        editorCanvasOffset = .zero
 
         // Resize view frame to match new image size (scroll view re-centers automatically)
         if isInsideScrollView {
@@ -6175,7 +6115,6 @@ class OverlayView: NSView {
             // Update selectionRect to match restored image size
             if isEditorMode {
                 selectionRect = NSRect(origin: .zero, size: previousImage.size)
-                editorCanvasOffset = .zero
                 if isInsideScrollView { frame.size = previousImage.size }
             }
             cachedCompositedImage = nil
@@ -6229,7 +6168,6 @@ class OverlayView: NSView {
             screenshotImage = redoImage
             if isEditorMode {
                 selectionRect = NSRect(origin: .zero, size: redoImage.size)
-                editorCanvasOffset = .zero
                 if isInsideScrollView { frame.size = redoImage.size }
             }
             cachedCompositedImage = nil
