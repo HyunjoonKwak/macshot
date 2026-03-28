@@ -4693,6 +4693,11 @@ class OverlayView: NSView {
                 overlayDelegate?.overlayViewDidFinishSelection(selectionRect)
             }
             hoveredWindowRect = nil
+            // Update cursor to match the selected tool (replaces resize cursor from dragging)
+            if let win = window {
+                let point = convert(win.mouseLocationOutsideOfEventStream, from: nil)
+                updateCursorForPoint(point)
+            }
             scheduleBarcodeDetection()
             // Auto-enter recording mode if triggered from "Record Screen"
             if autoEnterRecordingMode {
