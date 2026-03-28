@@ -295,7 +295,6 @@ class OverlayView: NSView {
     var currentRectFillStyle: RectFillStyle =
         RectFillStyle(rawValue: UserDefaults.standard.integer(forKey: "currentRectFillStyle"))
         ?? .stroke
-    private var optionsRectFillStyleRects: [NSRect] = []
     var currentStampImage: NSImage?  // selected emoji/image for stamp tool
     var currentStampEmoji: String?  // emoji string for highlight tracking
     private var stampPreviewPoint: NSPoint?  // mouse position for stamp cursor preview
@@ -1766,18 +1765,7 @@ class OverlayView: NSView {
             NSBezierPath(ovalIn: rect).fill()
         }
     }
-    /// Compare two colors by RGB components (ignoring minor floating point differences)
-    private func colorsMatchRGB(_ a: NSColor, _ b: NSColor) -> Bool {
-        guard let ac = a.usingColorSpace(.deviceRGB), let bc = b.usingColorSpace(.deviceRGB) else {
-            return a == b
-        }
-        let threshold: CGFloat = 0.01
-        return abs(ac.redComponent - bc.redComponent) < threshold
-            && abs(ac.greenComponent - bc.greenComponent) < threshold
-            && abs(ac.blueComponent - bc.blueComponent) < threshold
-    }
-
-    /// Convert NSColor to hex string like "FF3B30"
+    /// Compare two colors by RGB components (ignoring minor floating point differences)    /// Convert NSColor to hex string like "FF3B30"
     private func colorToHexString(_ color: NSColor) -> String {
         guard let rgb = color.usingColorSpace(.deviceRGB) else { return "000000" }
         let r = Int(round(rgb.redComponent * 255))
@@ -1799,26 +1787,6 @@ class OverlayView: NSView {
     }
 
     // MARK: - Custom Color Persistence
-
-    private func loadCustomColors() -> [NSColor?] {
-        guard let hexArray = UserDefaults.standard.array(forKey: "customColors") as? [String] else {
-            return Array(repeating: nil, count: 7)
-        }
-        var result: [NSColor?] = []
-        for hex in hexArray.prefix(7) {
-            if hex.isEmpty {
-                result.append(nil)
-            } else {
-                result.append(hexStringToColor(hex))
-            }
-        }
-        // Pad to 7 slots if needed
-        while result.count < 7 {
-            result.append(nil)
-        }
-        return result
-    }
-
     private func saveCustomColors() {
         let hexArray = customColors.map { color -> String in
             guard let c = color else { return "" }
@@ -2747,26 +2715,6 @@ class OverlayView: NSView {
     }
 
     // MARK: - Checkerboard
-
-    private func drawCheckerboard(in rect: NSRect) {
-        let size: CGFloat = 8
-        let light = NSColor(white: 0.75, alpha: 1.0)
-        let dark = NSColor(white: 0.55, alpha: 1.0)
-        let cols = Int(ceil(rect.width / size))
-        let rows = Int(ceil(rect.height / size))
-        for row in 0..<rows {
-            for col in 0..<cols {
-                let isLight = (row + col) % 2 == 0
-                (isLight ? light : dark).setFill()
-                let tileX = rect.minX + CGFloat(col) * size
-                let tileY = rect.minY + CGFloat(row) * size
-                let tileW = min(size, rect.maxX - tileX)
-                let tileH = min(size, rect.maxY - tileY)
-                NSBezierPath(rect: NSRect(x: tileX, y: tileY, width: tileW, height: tileH)).fill()
-            }
-        }
-    }
-
     // MARK: - Zoom helpers
 
     /// Convert a canvas-space point to view-space (reverse of viewToCanvas).
@@ -3291,19 +3239,6 @@ class OverlayView: NSView {
     }
 
     // MARK: - Action Equality Helper (for press feedback)
-
-    private func actionEq(_ a: ToolbarButtonAction, _ b: ToolbarButtonAction) -> Bool {
-        switch (a, b) {
-        case (.undo, .undo), (.redo, .redo), (.copy, .copy), (.save, .save), (.upload, .upload),
-            (.pin, .pin), (.ocr, .ocr), (.autoRedact, .autoRedact),
-            (.removeBackground, .removeBackground),
-            (.cancel, .cancel):
-            return true
-        default:
-            return false
-        }
-    }
-
     // MARK: - Overlay Error
 
     func showOverlayError(_ message: String) {
@@ -3589,15 +3524,6 @@ class OverlayView: NSView {
     }
     // MARK: - Toolbar Layout
 
-    /// Whether the selection covers (nearly) the full screen
-    private var isFullScreenSelection: Bool {
-        let margin: CGFloat = 50
-        return selectionRect.minX < bounds.minX + margin
-            && selectionRect.minY < bounds.minY + margin
-            && selectionRect.maxX > bounds.maxX - margin
-            && selectionRect.maxY > bounds.maxY - margin
-    }
-
     /// Rebuild toolbar button content. Call when tool, color, or state changes — NOT on every draw.
     func rebuildToolbarLayout() {
         let movableAnnotations = annotations.contains { $0.isMovable }
@@ -3825,33 +3751,7 @@ class OverlayView: NSView {
         return .none
     }
 
-    // New method for hit-testing text resize handles
-    private func hitTestTextResize(point: NSPoint, scrollViewFrame: NSRect) -> ResizeHandle {
-        let handleSize: CGFloat = 10
-        let r = scrollViewFrame
-        let hs = handleSize + 4  // handle hit area
-
-        // Top-left
-        if NSRect(x: r.minX - hs / 2, y: r.maxY - hs / 2, width: hs, height: hs).contains(point) {
-            return .topLeft
-        }
-        // Top-right
-        if NSRect(x: r.maxX - hs / 2, y: r.maxY - hs / 2, width: hs, height: hs).contains(point) {
-            return .topRight
-        }
-        // Bottom-left
-        if NSRect(x: r.minX - hs / 2, y: r.minY - hs / 2, width: hs, height: hs).contains(point) {
-            return .bottomLeft
-        }
-        // Bottom-right
-        if NSRect(x: r.maxX - hs / 2, y: r.minY - hs / 2, width: hs, height: hs).contains(point) {
-            return .bottomRight
-        }
-
-        return .none
-    }
-
-    // MARK: - Mouse Events
+    // New method for hit-testing text resize handles    // MARK: - Mouse Events
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
@@ -5533,50 +5433,6 @@ class OverlayView: NSView {
         needsDisplay = true
     }
 
-    private func applyFontSizeToSelection() {
-        guard let tv = textEditView, let ts = tv.textStorage else { return }
-        let range = selectedOrAllRange()
-        if range.length > 0 {
-            ts.beginEditing()
-            ts.enumerateAttribute(.font, in: range) { value, attrRange, _ in
-                if let font = value as? NSFont {
-                    let newFont = NSFontManager.shared.convert(font, toSize: textFontSize)
-                    ts.addAttribute(.font, value: newFont, range: attrRange)
-                }
-            }
-            ts.endEditing()
-        }
-        tv.typingAttributes[.font] = currentTextFont()
-        resizeTextViewToFit()
-        window?.makeFirstResponder(tv)
-    }
-
-    private func applyFontFamilyToSelection(_ family: String) {
-        guard let tv = textEditView, let ts = tv.textStorage else { return }
-        let fm = NSFontManager.shared
-        let range = selectedOrAllRange()
-        if range.length > 0 {
-            ts.beginEditing()
-            ts.enumerateAttribute(.font, in: range) { value, attrRange, _ in
-                if let font = value as? NSFont {
-                    let newFont: NSFont
-                    if family == "System" {
-                        newFont = NSFont.systemFont(
-                            ofSize: font.pointSize,
-                            weight: fm.traits(of: font).contains(.boldFontMask) ? .bold : .regular)
-                    } else {
-                        newFont = fm.convert(font, toFamily: family)
-                    }
-                    ts.addAttribute(.font, value: newFont, range: attrRange)
-                }
-            }
-            ts.endEditing()
-        }
-        tv.typingAttributes[.font] = currentTextFont()
-        resizeTextViewToFit()
-        window?.makeFirstResponder(tv)
-    }
-
     func applyAlignmentToTextIfEditing() {
         guard let tv = textEditView, let ts = tv.textStorage else { return }
         let range = NSRange(location: 0, length: ts.length)
@@ -6190,11 +6046,6 @@ class OverlayView: NSView {
         cachedCompositedImage = image
         return image
     }
-
-    private func invalidateCompositedImageCache() {
-        cachedCompositedImage = nil
-    }
-
     func captureSelectedRegion() -> NSImage? {
         guard selectionRect.width > 0, selectionRect.height > 0 else { return nil }
 
