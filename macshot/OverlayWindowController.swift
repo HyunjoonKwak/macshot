@@ -169,6 +169,7 @@ class OverlayWindowController {
 
             let cv = RecordingControlView(frame: NSRect(origin: .zero, size: rightBarScreen.size))
             cv.overlayView = overlayView
+            cv.rebuildButtons()
             win.contentView = cv
             win.orderFront(nil)
             // Briefly activate macshot so the control window can become key for ESC handling,
@@ -192,7 +193,7 @@ class OverlayWindowController {
     func updateRecordingProgress(seconds: Int) {
         overlayView?.recordingElapsedSeconds = seconds
         overlayView?.needsDisplay = true
-        recordingControlView?.needsDisplay = true
+        recordingControlView?.rebuildButtons()
     }
 
     func updateAnnotationMode(isAnnotating: Bool) {
