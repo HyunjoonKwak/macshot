@@ -19,7 +19,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
     private var hotkeyButtons: [HotkeyManager.HotkeySlot: NSButton] = [:]
     private var recordingSlot: HotkeyManager.HotkeySlot?
     private var savePathField: NSTextField!
-    private var autoCopyOCRCheckbox: NSButton!
+    private var ocrActionPopup: NSPopUpButton!
     private var copySoundCheckbox: NSButton!
     private var rememberSelectionCheckbox: NSButton!
     private var rememberToolCheckbox: NSButton!
@@ -225,10 +225,22 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         quickModePopup.action = #selector(quickModeChanged(_:))
 
         stack.addArrangedSubview(labeledRow("Enter / Quick Capture:", controls: [quickModePopup]))
+        stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
+
+        // OCR action dropdown
+        ocrActionPopup = NSPopUpButton()
+        ocrActionPopup.addItems(withTitles: [
+            "Show window + copy to clipboard",
+            "Show window only",
+            "Copy to clipboard only",
+        ])
+        ocrActionPopup.target = self
+        ocrActionPopup.action = #selector(ocrActionChanged(_:))
+
+        stack.addArrangedSubview(labeledRow("OCR Capture:", controls: [ocrActionPopup]))
         stack.setCustomSpacing(12, after: stack.arrangedSubviews.last!)
 
         // Checkboxes
-        autoCopyOCRCheckbox = NSButton(checkboxWithTitle: "Auto-copy OCR text to clipboard", target: self, action: #selector(autoCopyOCRChanged(_:)))
         copySoundCheckbox = NSButton(checkboxWithTitle: "Play sound on copy", target: self, action: #selector(copySoundChanged(_:)))
         rememberSelectionCheckbox = NSButton(checkboxWithTitle: "Remember last selection area", target: self, action: #selector(rememberSelectionChanged(_:)))
         rememberToolCheckbox = NSButton(checkboxWithTitle: "Remember last selected tool", target: self, action: #selector(rememberToolChanged(_:)))
@@ -238,7 +250,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         captureCursorCheckbox = NSButton(checkboxWithTitle: "Capture mouse cursor in screenshot", target: self, action: #selector(captureCursorChanged(_:)))
         windowTitleCheckbox = NSButton(checkboxWithTitle: "Use window title in saved filename", target: self, action: #selector(windowTitleChanged(_:)))
 
-        for cb in [autoCopyOCRCheckbox!, copySoundCheckbox!, rememberSelectionCheckbox!, rememberToolCheckbox!, thumbnailCheckbox!] {
+        for cb in [copySoundCheckbox!, rememberSelectionCheckbox!, rememberToolCheckbox!, thumbnailCheckbox!] {
             stack.addArrangedSubview(indented(cb))
             stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
         }
@@ -1354,8 +1366,12 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
 
         savePathField.stringValue = SaveDirectoryAccess.displayPath
 
-        let autoCopyOCR = UserDefaults.standard.object(forKey: "autoCopyOCRText") as? Bool ?? true
-        autoCopyOCRCheckbox.state = autoCopyOCR ? .on : .off
+        // Migrate legacy bool to new int setting
+        if UserDefaults.standard.object(forKey: "ocrAction") == nil {
+            let legacyAutoCopy = UserDefaults.standard.object(forKey: "autoCopyOCRText") as? Bool ?? true
+            UserDefaults.standard.set(legacyAutoCopy ? 0 : 1, forKey: "ocrAction")
+        }
+        ocrActionPopup.selectItem(at: UserDefaults.standard.integer(forKey: "ocrAction"))
 
         let copySound = UserDefaults.standard.object(forKey: "playCopySound") as? Bool ?? true
         copySoundCheckbox.state = copySound ? .on : .off
@@ -1477,8 +1493,8 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         }
     }
 
-    @objc private func autoCopyOCRChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "autoCopyOCRText")
+    @objc private func ocrActionChanged(_ sender: NSPopUpButton) {
+        UserDefaults.standard.set(sender.indexOfSelectedItem, forKey: "ocrAction")
     }
     @objc private func copySoundChanged(_ sender: NSButton) {
         UserDefaults.standard.set(sender.state == .on, forKey: "playCopySound")

@@ -64,23 +64,32 @@ class ToolbarButtonView: NSView {
             return
         }
 
-        // SF Symbol (cached to avoid expensive re-render every frame)
+        // SF Symbol or custom icon (cached to avoid expensive re-render every frame)
         guard let name = sfSymbol else { return }
         let currentIsOn = isOn
         if cachedIcon == nil || cachedIconIsOn != currentIsOn {
-            let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-            if let img = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
-                    .withSymbolConfiguration(cfg) {
-                let color = currentIsOn ? ToolbarLayout.iconColor : tintColor
-                let tinted = NSImage(size: img.size, flipped: false) { r in
-                    img.draw(in: r, from: .zero, operation: .sourceOver, fraction: 1.0)
-                    color.setFill()
-                    r.fill(using: .sourceAtop)
-                    return true
+            let color = currentIsOn ? ToolbarLayout.iconColor : tintColor
+            let img: NSImage?
+            if name == "_custom.checkerboard" {
+                img = Self.checkerboardIcon(color: color)
+            } else {
+                let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+                if let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+                        .withSymbolConfiguration(cfg) {
+                    img = NSImage(size: symbol.size, flipped: false) { r in
+                        symbol.draw(in: r, from: .zero, operation: .sourceOver, fraction: 1.0)
+                        color.setFill()
+                        r.fill(using: .sourceAtop)
+                        return true
+                    }
+                } else {
+                    img = nil
                 }
+            }
+            if let img = img {
                 // Force the image to render now so it's a bitmap, not a lazy drawing block
-                tinted.lockFocus(); tinted.unlockFocus()
-                cachedIcon = tinted
+                img.lockFocus(); img.unlockFocus()
+                cachedIcon = img
                 cachedIconIsOn = currentIsOn
             }
         }
@@ -159,5 +168,36 @@ class ToolbarButtonView: NSView {
 
     override func resetCursorRects() {
         addCursorRect(bounds, cursor: .arrow)
+    }
+
+    // MARK: - Custom checkerboard icon
+
+    /// Generate a checkerboard icon matching the style of SF Symbols, tinted with the given color.
+    /// The result is a rounded square with a 4x4 checkerboard pattern.
+    private static func checkerboardIcon(color: NSColor) -> NSImage {
+        let size: CGFloat = 16
+        let img = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
+            let cornerRadius: CGFloat = 3
+            let cellSize = size / 4
+            let clip = NSBezierPath(roundedRect: NSRect(x: 0, y: 0, width: size, height: size),
+                                    xRadius: cornerRadius, yRadius: cornerRadius)
+            clip.addClip()
+
+            for row in 0..<4 {
+                for col in 0..<4 {
+                    let isDark = (row + col) % 2 == 0
+                    if isDark {
+                        color.setFill()
+                    } else {
+                        color.withAlphaComponent(0.35).setFill()
+                    }
+                    let cellRect = NSRect(x: CGFloat(col) * cellSize, y: CGFloat(row) * cellSize,
+                                          width: cellSize, height: cellSize)
+                    cellRect.fill()
+                }
+            }
+            return true
+        }
+        return img
     }
 }

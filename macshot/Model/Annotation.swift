@@ -132,12 +132,14 @@ enum CensorMode: Int, CaseIterable {
     case pixelate = 0
     case blur = 1
     case solid = 2
+    case erase = 3
 
     var label: String {
         switch self {
         case .pixelate: return "Pixelate"
         case .blur: return "Blur"
         case .solid: return "Solid"
+        case .erase: return "Erase"
         }
     }
 }
@@ -1137,8 +1139,12 @@ class Annotation {
             path.stroke()
 
         case .stroke:
-            if lineStyle == .dotted && cornerRadius < 1 {
-                drawDottedRectPerSide(rect: rect)
+            if cornerRadius < 1 && (lineStyle == .dotted || lineStyle == .dashed) {
+                if lineStyle == .dotted {
+                    drawDottedRectPerSide(rect: rect)
+                } else {
+                    drawDashedRectPerSide(rect: rect)
+                }
             } else {
                 let path = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
                 path.lineWidth = strokeWidth
@@ -1188,6 +1194,48 @@ class Annotation {
                 let dotRect = NSRect(x: x - dotRadius, y: y - dotRadius, width: strokeWidth, height: strokeWidth)
                 NSBezierPath(ovalIn: dotRect).fill()
             }
+        }
+    }
+
+    /// Draw a dashed rectangle with dashes evenly distributed per side.
+    /// Each side is inset by half the stroke width so corners don't overlap.
+    private func drawDashedRectPerSide(rect: NSRect) {
+        let idealDash = strokeWidth * 3
+        let idealGap = strokeWidth * 2
+        let idealCycle = idealDash + idealGap
+        let hw = strokeWidth / 2  // half stroke width — inset to avoid corner overlap
+        color.setStroke()
+
+        // Corners inset by half stroke width along each side's direction
+        let sides: [(NSPoint, NSPoint)] = [
+            // bottom: left→right
+            (NSPoint(x: rect.minX + hw, y: rect.minY), NSPoint(x: rect.maxX - hw, y: rect.minY)),
+            // left: bottom→top
+            (NSPoint(x: rect.minX, y: rect.minY + hw), NSPoint(x: rect.minX, y: rect.maxY - hw)),
+            // top: left→right
+            (NSPoint(x: rect.minX + hw, y: rect.maxY), NSPoint(x: rect.maxX - hw, y: rect.maxY)),
+            // right: bottom→top
+            (NSPoint(x: rect.maxX, y: rect.minY + hw), NSPoint(x: rect.maxX, y: rect.maxY - hw)),
+        ]
+
+        for (p0, p1) in sides {
+            let sideLen = hypot(p1.x - p0.x, p1.y - p0.y)
+            guard sideLen > 0 else { continue }
+
+            let path = NSBezierPath()
+            path.lineWidth = strokeWidth
+            path.lineCapStyle = .butt
+            path.move(to: p0)
+            path.line(to: p1)
+
+            let n = max(1, round(sideLen / idealCycle))
+            let adjustedCycle = sideLen / n
+            let ratio = idealDash / idealCycle
+            let dash = adjustedCycle * ratio
+            let gap = adjustedCycle - dash
+            let pattern: [CGFloat] = [dash, gap]
+            path.setLineDash(pattern, count: 2, phase: dash / 2)
+            path.stroke()
         }
     }
 
@@ -1441,6 +1489,14 @@ class Annotation {
             return
         }
 
+        // Erase mode: sample edge colors and fill with smooth gradient
+        if mode == .erase {
+            guard let _ = sourceImage else { return }
+            bakedBlurNSImage = bakeErase()
+            self.sourceImage = nil
+            return
+        }
+
         guard let _ = sourceImage, let regionImage = cropRegionFromSource() else { return }
         guard let tiffData = regionImage.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiffData),
@@ -1507,6 +1563,10 @@ class Annotation {
             color.setFill()
             NSBezierPath(rect: rect).fill()
             return  // no border for solid
+        case .erase:
+            // Subtle crosshatch pattern to indicate erase area
+            NSColor(white: 0.5, alpha: 0.2).setFill()
+            NSBezierPath(rect: rect).fill()
         }
 
         let border = NSBezierPath(rect: rect)
@@ -1515,6 +1575,126 @@ class Annotation {
         border.setLineDash(pattern, count: 2, phase: 0)
         NSColor.white.withAlphaComponent(censorMode == .blur ? 0.7 : 0.5).setStroke()
         border.stroke()
+    }
+
+    /// Erase mode: sample the border pixels around the rect from the source image,
+    /// then fill each pixel by interpolating from the nearest edge colors.
+    /// Per-row left/right colors and per-column top/bottom colors are blended
+    /// so gradients and solid colors are both reproduced perfectly.
+    private func bakeErase() -> NSImage? {
+        guard let src = sourceImage, let srcBounds = sourceImageBounds as NSRect? else { return nil }
+        let rect = boundingRect
+        guard rect.width > 2, rect.height > 2 else { return nil }
+
+        // Render the source region with some padding into a bitmap for pixel sampling
+        let samplePad: CGFloat = 4  // pixels outside the rect to sample
+        let sampleRect = NSRect(
+            x: rect.minX - samplePad, y: rect.minY - samplePad,
+            width: rect.width + samplePad * 2, height: rect.height + samplePad * 2)
+
+        let regionImage = NSImage(size: sampleRect.size, flipped: false) { _ in
+            src.draw(in: NSRect(x: -(sampleRect.minX - srcBounds.minX),
+                                y: -(sampleRect.minY - srcBounds.minY),
+                                width: srcBounds.width, height: srcBounds.height),
+                     from: .zero, operation: .copy, fraction: 1.0)
+            return true
+        }
+        guard let tiffData = regionImage.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData) else { return nil }
+
+        let bmpW = bitmap.pixelsWide, bmpH = bitmap.pixelsHigh
+        guard bmpW > 4, bmpH > 4 else { return nil }
+
+        // Inner rect in bitmap pixel coords
+        let scaleX = CGFloat(bmpW) / sampleRect.width
+        let scaleY = CGFloat(bmpH) / sampleRect.height
+        let ix = Int(samplePad * scaleX)
+        let iy = Int(samplePad * scaleY)
+        let iw = Int(rect.width * scaleX)
+        let ih = Int(rect.height * scaleY)
+        guard iw > 0, ih > 0 else { return nil }
+
+        func samplePixel(_ x: Int, _ y: Int) -> (r: CGFloat, g: CGFloat, b: CGFloat) {
+            let cx = max(0, min(bmpW - 1, x))
+            let cy = max(0, min(bmpH - 1, y))
+            var pixel: [Int] = [0, 0, 0, 0]
+            bitmap.getPixel(&pixel, atX: cx, y: cy)
+            return (CGFloat(pixel[0]) / 255, CGFloat(pixel[1]) / 255, CGFloat(pixel[2]) / 255)
+        }
+
+        // Sample left and right edge colors per row (just outside the rect)
+        var leftColors = [(r: CGFloat, g: CGFloat, b: CGFloat)]()
+        var rightColors = [(r: CGFloat, g: CGFloat, b: CGFloat)]()
+        for row in 0..<ih {
+            let sy = iy + row
+            // Average a few pixels outside the left/right edge
+            var lr: CGFloat = 0, lg: CGFloat = 0, lb: CGFloat = 0
+            var rr: CGFloat = 0, rg: CGFloat = 0, rb: CGFloat = 0
+            let n = max(1, min(ix, 3))  // sample up to 3 pixels
+            for d in 1...n {
+                let l = samplePixel(ix - d, sy)
+                lr += l.r; lg += l.g; lb += l.b
+                let r = samplePixel(ix + iw - 1 + d, sy)
+                rr += r.r; rg += r.g; rb += r.b
+            }
+            leftColors.append((lr / CGFloat(n), lg / CGFloat(n), lb / CGFloat(n)))
+            rightColors.append((rr / CGFloat(n), rg / CGFloat(n), rb / CGFloat(n)))
+        }
+
+        // Sample top and bottom edge colors per column
+        var topColors = [(r: CGFloat, g: CGFloat, b: CGFloat)]()
+        var bottomColors = [(r: CGFloat, g: CGFloat, b: CGFloat)]()
+        for col in 0..<iw {
+            let sx = ix + col
+            var tr: CGFloat = 0, tg: CGFloat = 0, tb: CGFloat = 0
+            var br: CGFloat = 0, bg: CGFloat = 0, bb: CGFloat = 0
+            let n = max(1, min(iy, 3))
+            for d in 1...n {
+                let t = samplePixel(sx, iy + ih - 1 + d)
+                tr += t.r; tg += t.g; tb += t.b
+                let b = samplePixel(sx, iy - d)
+                br += b.r; bg += b.g; bb += b.b
+            }
+            topColors.append((tr / CGFloat(n), tg / CGFloat(n), tb / CGFloat(n)))
+            bottomColors.append((br / CGFloat(n), bg / CGFloat(n), bb / CGFloat(n)))
+        }
+
+        // Render the fill: for each pixel, blend horizontal interpolation (left↔right)
+        // with vertical interpolation (bottom↔top)
+        let outW = iw, outH = ih
+        let cs = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+        guard let ctx = CGContext(data: nil, width: outW, height: outH,
+                                  bitsPerComponent: 8, bytesPerRow: outW * 4,
+                                  space: cs, bitmapInfo: bitmapInfo),
+              let outData = ctx.data else { return nil }
+        let outPtr = outData.bindMemory(to: UInt8.self, capacity: outW * outH * 4)
+
+        for row in 0..<outH {
+            let ty = CGFloat(row) / max(1, CGFloat(outH - 1))  // 0 = bottom, 1 = top
+            let lc = leftColors[row], rc = rightColors[row]
+            for col in 0..<outW {
+                let tx = CGFloat(col) / max(1, CGFloat(outW - 1))  // 0 = left, 1 = right
+                let tc = topColors[col], bc = bottomColors[col]
+                // Horizontal lerp from left/right edge colors for this row
+                let hr = lc.r + (rc.r - lc.r) * tx
+                let hg = lc.g + (rc.g - lc.g) * tx
+                let hb = lc.b + (rc.b - lc.b) * tx
+                // Vertical lerp from bottom/top edge colors for this column
+                let vr = bc.r + (tc.r - bc.r) * ty
+                let vg = bc.g + (tc.g - bc.g) * ty
+                let vb = bc.b + (tc.b - bc.b) * ty
+                // Average horizontal and vertical
+                let off = (row * outW + col) * 4
+                outPtr[off]   = UInt8(max(0, min(255, (hr + vr) * 0.5 * 255)))
+                outPtr[off+1] = UInt8(max(0, min(255, (hg + vg) * 0.5 * 255)))
+                outPtr[off+2] = UInt8(max(0, min(255, (hb + vb) * 0.5 * 255)))
+                outPtr[off+3] = 255
+            }
+        }
+
+        guard let resultCG = ctx.makeImage() else { return nil }
+        return NSImage(cgImage: resultCG, size: rect.size)
     }
 
     private static let ciContext = CIContext()

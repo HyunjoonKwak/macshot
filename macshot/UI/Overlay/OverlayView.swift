@@ -893,8 +893,67 @@ class OverlayView: NSView {
             return
         }
 
-        // Show open hand cursor when hovering over any movable annotation
-        if state == .selected && !isDraggingAnnotation {
+        // Annotation control cursors (resize handles, rotation, delete, body)
+        if state == .selected && !isDraggingAnnotation && !isResizingAnnotation && !isRotatingAnnotation {
+            // Check selected annotation's handles first
+            if selectedAnnotation != nil {
+                // Unrotate point for handle hit test
+                let handlePoint: NSPoint
+                if let ann = selectedAnnotation, ann.rotation != 0 && ann.supportsRotation {
+                    let center = NSPoint(x: ann.boundingRect.midX, y: ann.boundingRect.midY)
+                    let cos_r = cos(-ann.rotation)
+                    let sin_r = sin(-ann.rotation)
+                    let dx = point.x - center.x
+                    let dy = point.y - center.y
+                    handlePoint = NSPoint(x: center.x + dx * cos_r - dy * sin_r,
+                                          y: center.y + dx * sin_r + dy * cos_r)
+                } else {
+                    handlePoint = point
+                }
+
+                // Resize handles — directional cursors for shapes, open hand for line/arrow points
+                let isShapeTool = [AnnotationTool.rectangle, .filledRectangle, .ellipse, .text,
+                                   .number, .pixelate, .stamp].contains(selectedAnnotation?.tool)
+                for (_, handleEntry) in annotationResizeHandleRects.enumerated() {
+                    let (handle, rect) = handleEntry
+                    if rect.insetBy(dx: -4, dy: -4).contains(handlePoint) {
+                        if isShapeTool {
+                            switch handle {
+                            case .topLeft, .bottomRight: Self.nwseCursor.set()
+                            case .topRight, .bottomLeft: Self.neswCursor.set()
+                            case .top, .bottom: NSCursor.resizeUpDown.set()
+                            case .left, .right: NSCursor.resizeLeftRight.set()
+                            default: NSCursor.openHand.set()
+                            }
+                        } else {
+                            NSCursor.openHand.set()
+                        }
+                        return
+                    }
+                }
+
+                // Rotation handle
+                if annotationRotateHandleRect != .zero
+                    && annotationRotateHandleRect.insetBy(dx: -6, dy: -6).contains(point) {
+                    // Use a rotation-style cursor (crosshair works as a generic grab indicator)
+                    NSCursor.openHand.set()
+                    return
+                }
+
+                // Delete button
+                if annotationDeleteButtonRect.contains(point) {
+                    NSCursor.arrow.set()
+                    return
+                }
+
+                // Edit button
+                if annotationEditButtonRect != .zero && annotationEditButtonRect.contains(point) {
+                    NSCursor.arrow.set()
+                    return
+                }
+            }
+
+            // Body hover — open hand
             let canvasPoint = viewToCanvas(point)
             if let selected = selectedAnnotation, selected.hitTest(point: canvasPoint) {
                 NSCursor.openHand.set()
@@ -5204,6 +5263,10 @@ class OverlayView: NSView {
     }
 
     /// Push a property change undo entry. Called by ToolOptionsRowView when editing completes.
+    func updateBeautifySwatch(styleIndex: Int) {
+        toolOptionsRowView?.updateBeautifySwatch(styleIndex: styleIndex)
+    }
+
     func pushPropertyChangeUndo(annotation: Annotation, snapshot: Annotation) {
         undoStack.append(.propertyChange(annotation: annotation, snapshot: snapshot))
         redoStack.removeAll()

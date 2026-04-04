@@ -345,19 +345,61 @@ class ToolOptionsRowView: NSView {
         seg.trackingMode = .selectOne
         seg.target = self
         seg.action = #selector(censorModeChanged(_:))
+        seg.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        (seg.cell as? NSSegmentedCell)?.segmentStyle = .roundRect
         for (i, mode) in CensorMode.allCases.enumerated() {
             seg.setLabel(mode.label, forSegment: i)
-            seg.setWidth(0, forSegment: i)  // auto-size
+            seg.setWidth(0, forSegment: i)
         }
         let currentMode = CensorMode(rawValue: UserDefaults.standard.integer(forKey: "censorMode")) ?? .pixelate
         seg.selectedSegment = currentMode.rawValue
         seg.sizeToFit()
-        seg.frame.origin = NSPoint(x: curX, y: (rowHeight - 22) / 2)
-        seg.frame.size.height = 22
-        (seg.cell as? NSSegmentedCell)?.segmentStyle = .roundRect
+        seg.frame = NSRect(x: curX, y: (rowHeight - 22) / 2, width: seg.frame.width, height: 22)
         addSubview(seg)
         curX += seg.frame.width
         return curX
+    }
+
+    /// Add a uniform redact action button using NSSegmentedControl for consistent sizing.
+    /// If `dropdownAction` is provided, adds a second narrow segment with a ▾ arrow.
+    private func addRedactButton(at x: CGFloat, title: String, action: Selector,
+                                  font: NSFont, height: CGFloat, y: CGFloat,
+                                  dropdownAction: Selector? = nil) -> CGFloat {
+        var curX = x
+        let seg = NSSegmentedControl()
+        seg.trackingMode = .momentary
+        seg.font = font
+        (seg.cell as? NSSegmentedCell)?.segmentStyle = .roundRect
+
+        if dropdownAction != nil {
+            seg.segmentCount = 2
+            seg.setLabel(title, forSegment: 0)
+            seg.setLabel("▾", forSegment: 1)
+            seg.setWidth(0, forSegment: 0)
+            seg.setWidth(18, forSegment: 1)
+            seg.target = self
+            seg.action = #selector(piiSegmentClicked(_:))
+        } else {
+            seg.segmentCount = 1
+            seg.setLabel(title, forSegment: 0)
+            seg.setWidth(0, forSegment: 0)
+            seg.target = self
+            seg.action = action
+        }
+
+        seg.sizeToFit()
+        seg.frame = NSRect(x: curX, y: y, width: seg.frame.width, height: height)
+        addSubview(seg)
+        curX += seg.frame.width + 4
+        return curX
+    }
+
+    @objc private func piiSegmentClicked(_ sender: NSSegmentedControl) {
+        if sender.selectedSegment == 0 {
+            redactPIIClicked()
+        } else {
+            redactTypesClicked(sender)
+        }
     }
 
     // MARK: - Segment preview images
@@ -879,17 +921,16 @@ class ToolOptionsRowView: NSView {
         let drawSeg = NSSegmentedControl(labels: ["All", "Text Only"], trackingMode: .selectOne,
                                           target: self, action: #selector(drawModeChanged(_:)))
         drawSeg.selectedSegment = textOnly ? 1 : 0
-        drawSeg.controlSize = .small
         drawSeg.font = NSFont.systemFont(ofSize: 10, weight: .medium)
         (drawSeg.cell as? NSSegmentedCell)?.segmentStyle = .roundRect
         drawSeg.sizeToFit()
-        drawSeg.frame.origin = NSPoint(x: curX, y: (rowHeight - drawSeg.frame.height) / 2)
+        drawSeg.frame = NSRect(x: curX, y: (rowHeight - 22) / 2, width: drawSeg.frame.width, height: 22)
         addSubview(drawSeg)
         curX += drawSeg.frame.width + 4
 
         curX = addSeparator(at: curX)
 
-        // — Auto-detect: All Text, PII, Types —
+        // — Auto-detect buttons —
         let autoLabel = NSTextField(labelWithString: "Auto:")
         autoLabel.font = NSFont.systemFont(ofSize: 9.5, weight: .medium)
         autoLabel.textColor = ToolbarLayout.iconColor.withAlphaComponent(0.4)
@@ -898,48 +939,23 @@ class ToolOptionsRowView: NSView {
         addSubview(autoLabel)
         curX += autoLabel.frame.width + 4
 
-        let allTextBtn = NSButton(title: "All Text", target: self, action: #selector(redactAllTextClicked))
-        allTextBtn.bezelStyle = .recessed
-        allTextBtn.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        allTextBtn.sizeToFit()
-        allTextBtn.frame.origin = NSPoint(x: curX, y: (rowHeight - allTextBtn.frame.height) / 2)
-        addSubview(allTextBtn)
-        curX += allTextBtn.frame.width + 4
+        let btnH: CGFloat = 22
+        let btnFont = NSFont.systemFont(ofSize: 10, weight: .medium)
+        let btnY = (rowHeight - btnH) / 2
 
-        let piiBtn = NSButton(title: "PII", target: self, action: #selector(redactPIIClicked))
-        piiBtn.bezelStyle = .recessed
-        piiBtn.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        piiBtn.sizeToFit()
-        piiBtn.frame.origin = NSPoint(x: curX, y: (rowHeight - piiBtn.frame.height) / 2)
-        addSubview(piiBtn)
-        curX += piiBtn.frame.width + 4
+        curX = addRedactButton(at: curX, title: "All Text", action: #selector(redactAllTextClicked),
+                               font: btnFont, height: btnH, y: btnY)
 
-        let typeBtn = NSButton(title: "Types ▾", target: self, action: #selector(redactTypesClicked(_:)))
-        typeBtn.bezelStyle = .recessed
-        typeBtn.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        typeBtn.sizeToFit()
-        typeBtn.frame.origin = NSPoint(x: curX, y: (rowHeight - typeBtn.frame.height) / 2)
-        addSubview(typeBtn)
-        curX += typeBtn.frame.width + 4
+        // PII button with dropdown arrow for type selection
+        curX = addRedactButton(at: curX, title: "PII", action: #selector(redactPIIClicked),
+                               font: btnFont, height: btnH, y: btnY,
+                               dropdownAction: #selector(redactTypesClicked(_:)))
 
-        curX = addSeparator(at: curX)
+        curX = addRedactButton(at: curX, title: "Faces", action: #selector(redactFacesClicked),
+                               font: btnFont, height: btnH, y: btnY)
 
-        // — Face & people detection —
-        let facesBtn = NSButton(title: "Faces", target: self, action: #selector(redactFacesClicked))
-        facesBtn.bezelStyle = .recessed
-        facesBtn.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        facesBtn.sizeToFit()
-        facesBtn.frame.origin = NSPoint(x: curX, y: (rowHeight - facesBtn.frame.height) / 2)
-        addSubview(facesBtn)
-        curX += facesBtn.frame.width + 4
-
-        let peopleBtn = NSButton(title: "People", target: self, action: #selector(redactPeopleClicked))
-        peopleBtn.bezelStyle = .recessed
-        peopleBtn.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        peopleBtn.sizeToFit()
-        peopleBtn.frame.origin = NSPoint(x: curX, y: (rowHeight - peopleBtn.frame.height) / 2)
-        addSubview(peopleBtn)
-        curX += peopleBtn.frame.width + 4
+        curX = addRedactButton(at: curX, title: "People", action: #selector(redactPeopleClicked),
+                               font: btnFont, height: btnH, y: btnY)
 
         return curX
     }
@@ -1068,6 +1084,11 @@ class ToolOptionsRowView: NSView {
         ov.beautifyShadowRadius = CGFloat(sender.floatValue)
         UserDefaults.standard.set(sender.doubleValue, forKey: "beautifyShadowRadius")
         ov.needsDisplay = true
+    }
+
+    func updateBeautifySwatch(styleIndex: Int) {
+        guard let btn = viewWithTag(995) as? NSButton else { return }
+        btn.image = Self.gradientSwatchImage(styleIndex: styleIndex, size: 22)
     }
 
     @objc private func beautifyGradientClicked(_ sender: NSButton) {
@@ -1271,7 +1292,7 @@ class ToolOptionsRowView: NSView {
         overlayView?.performRedactPeople()
     }
 
-    @objc private func redactTypesClicked(_ sender: NSButton) {
+    @objc private func redactTypesClicked(_ sender: NSView) {
         if PopoverHelper.isVisible { PopoverHelper.dismiss(); return }
         guard let ov = overlayView else { return }
         ov.showRedactTypePopover(anchorRect: .zero, anchorView: sender)

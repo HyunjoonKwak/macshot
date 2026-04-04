@@ -17,7 +17,7 @@ final class PixelateToolHandler: AnnotationToolHandler {
             strokeWidth: canvas.currentStrokeWidth
         )
         annotation.censorMode = mode
-        // Solid mode doesn't need a source image
+        // Solid mode doesn't need a source image; all others do
         if mode != .solid {
             annotation.sourceImage = canvas.compositedImage()
             annotation.sourceImageBounds = canvas.captureDrawRect

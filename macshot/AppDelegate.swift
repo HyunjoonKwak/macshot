@@ -1045,17 +1045,22 @@ extension AppDelegate: OverlayWindowControllerDelegate {
     func overlayDidRequestOCR(_ controller: OverlayWindowController, text: String, image: NSImage?) {
         dismissOverlays()
 
-        // Auto-copy OCR text to clipboard (default: on)
-        let autoCopyOCR = UserDefaults.standard.object(forKey: "autoCopyOCRText") as? Bool ?? true
-        if autoCopyOCR && !text.isEmpty {
+        // OCR action: 0 = window + copy (default), 1 = window only, 2 = copy only
+        let ocrAction = UserDefaults.standard.integer(forKey: "ocrAction")
+        let shouldCopy = ocrAction == 0 || ocrAction == 2
+        let shouldShowWindow = ocrAction == 0 || ocrAction == 1
+
+        if shouldCopy && !text.isEmpty {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(text, forType: .string)
         }
 
-        ocrController?.close()
-        let ocr = OCRResultController(text: text, image: image)
-        ocrController = ocr
-        ocr.show()
+        if shouldShowWindow {
+            ocrController?.close()
+            let ocr = OCRResultController(text: text, image: image)
+            ocrController = ocr
+            ocr.show()
+        }
     }
 
     func overlayDidRequestUpload(_ controller: OverlayWindowController, image: NSImage) {

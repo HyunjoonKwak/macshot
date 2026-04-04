@@ -137,6 +137,8 @@ extension OverlayView {
             UserDefaults.standard.set(idx, forKey: "beautifyStyleIndex")
             self?.cachedCompositedImage = nil
             self?.needsDisplay = true
+            // Update the swatch preview button in the options row
+            self?.updateBeautifySwatch(styleIndex: idx)
         }
         if let anchor = anchorView {
             PopoverHelper.show(

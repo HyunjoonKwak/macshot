@@ -46,9 +46,17 @@ class ListPickerView: NSView {
         frame.size = NSSize(width: width, height: totalH)
     }
 
-    /// Preferred size for the popover.
+    /// Preferred size for the popover, computed from content.
     var preferredSize: NSSize {
-        let w: CGFloat = 160
+        let font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        let checkW: CGFloat = 24  // space for checkmark + padding
+        let hPad: CGFloat = 20   // horizontal padding
+        var maxTextW: CGFloat = 100
+        for item in items {
+            let textW = (item.title as NSString).size(withAttributes: [.font: font]).width
+            maxTextW = max(maxTextW, textW)
+        }
+        let w = ceil(maxTextW + checkW + hPad)
         let h = CGFloat(items.count) * rowHeight + padding * 2
         return NSSize(width: w, height: h)
     }

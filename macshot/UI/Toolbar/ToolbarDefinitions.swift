@@ -145,10 +145,13 @@ class ToolbarLayout {
             (.arrow, "arrow.up.right", "Arrow"),
             (.rectangle, "rectangle", "Rectangle"),
             (.ellipse, "oval", "Ellipse"),
-            (.marker, "paintbrush.pointed.fill", "Marker"),
+            (.marker, {
+                if #available(macOS 14.0, *) { return "highlighter" }
+                return "paintbrush.pointed.fill"
+            }(), "Marker"),
             (.text, "textformat", "Text"),
             (.number, "1.circle.fill", "Number"),
-            (.pixelate, "squareshape.split.2x2", "Censor (Pixelate / Blur / Solid)"),
+            (.pixelate, "_custom.checkerboard", "Censor (Pixelate / Blur / Solid)"),
             (.loupe, "magnifyingglass", "Magnify (Loupe)"),
             (.stamp, "face.smiling", "Stamp / Emoji"),
             (.colorSampler, "eyedropper", "Color Picker"),
