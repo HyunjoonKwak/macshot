@@ -143,7 +143,9 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
         guard index >= 0, index < entries.count else { return }
         guard let image = ScreenshotHistory.shared.loadImage(for: entries[index]) else { return }
         dismiss()
-        DetachedEditorWindowController.open(image: image)
+        DispatchQueue.main.async {
+            DetachedEditorWindowController.open(image: image)
+        }
     }
 
     func pinToScreen(index: Int) {
