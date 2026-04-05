@@ -48,14 +48,14 @@ class HotkeyManager {
 
         var label: String {
             switch self {
-            case .captureArea: return "Capture Area"
-            case .captureFullScreen: return "Capture Screen"
-            case .recordArea: return "Record Area"
-            case .recordScreen: return "Record Screen"
-            case .historyOverlay: return "History"
-            case .captureOCR: return "Capture OCR"
-            case .quickCapture: return "Quick Capture"
-            case .recaptureLastArea: return "Recapture Last Area"
+            case .captureArea: return NSLocalizedString("hotkey.capture_area", comment: "")
+            case .captureFullScreen: return NSLocalizedString("hotkey.capture_screen", comment: "")
+            case .recordArea: return NSLocalizedString("hotkey.record_area", comment: "")
+            case .recordScreen: return NSLocalizedString("hotkey.record_screen", comment: "")
+            case .historyOverlay: return NSLocalizedString("hotkey.history", comment: "")
+            case .captureOCR: return NSLocalizedString("hotkey.capture_ocr", comment: "")
+            case .quickCapture: return NSLocalizedString("hotkey.quick_capture", comment: "")
+            case .recaptureLastArea: return NSLocalizedString("hotkey.recapture", comment: "")
             }
         }
 

@@ -728,18 +728,26 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.annotation_tools", comment: "")))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
-        let noteA = NSTextField(labelWithString: "Hidden tools are removed from the bottom toolbar.")
+        let noteA = NSTextField(labelWithString: NSLocalizedString("pref.note.hidden_tools", comment: ""))
         noteA.font = NSFont.systemFont(ofSize: 11)
         noteA.textColor = .secondaryLabelColor
         stack.addArrangedSubview(noteA)
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         let annotationTools: [(AnnotationTool, String)] = [
-            (.pencil, "Pencil"), (.line, "Line"), (.arrow, "Arrow"),
-            (.rectangle, "Rectangle"),
-            (.ellipse, "Ellipse"), (.marker, "Marker"), (.text, "Text"),
-            (.number, "Number / Counter"), (.pixelate, "Censor"),
-            (.loupe, "Magnify (Loupe)"), (.stamp, "Stamp / Emoji"), (.colorSampler, "Color Picker"), (.measure, "Measure"),
+            (.pencil, NSLocalizedString("tool.pencil", comment: "")),
+            (.line, NSLocalizedString("tool.line", comment: "")),
+            (.arrow, NSLocalizedString("tool.arrow", comment: "")),
+            (.rectangle, NSLocalizedString("tool.rectangle", comment: "")),
+            (.ellipse, NSLocalizedString("tool.ellipse", comment: "")),
+            (.marker, NSLocalizedString("tool.marker", comment: "")),
+            (.text, NSLocalizedString("tool.text", comment: "")),
+            (.number, NSLocalizedString("tool.number", comment: "")),
+            (.pixelate, NSLocalizedString("tool.censor", comment: "")),
+            (.loupe, NSLocalizedString("tool.loupe", comment: "")),
+            (.stamp, NSLocalizedString("tool.stamp", comment: "")),
+            (.colorSampler, NSLocalizedString("tool.color_picker", comment: "")),
+            (.measure, NSLocalizedString("tool.measure", comment: "")),
         ]
         let enabledTools = UserDefaults.standard.array(forKey: "enabledTools") as? [Int]
         let toolsGrid = makeToggleGrid(items: annotationTools.map { (tag: $0.rawValue, label: $1) },
@@ -751,17 +759,17 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.bottom_toolbar", comment: "")))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
-        let noteB = NSTextField(labelWithString: "Hidden actions are removed from the bottom toolbar.")
+        let noteB = NSTextField(labelWithString: NSLocalizedString("pref.note.hidden_bottom", comment: ""))
         noteB.font = NSFont.systemFont(ofSize: 11)
         noteB.textColor = .secondaryLabelColor
         stack.addArrangedSubview(noteB)
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         let bottomActionItems: [(tag: Int, label: String)] = [
-            (1011, "Invert Colors"),
-            (1013, "Adjust (Image Effects)"),
-            (1004, "Beautify"),
-            (1005, "Remove Background"),
+            (1011, NSLocalizedString("action.invert", comment: "")),
+            (1013, NSLocalizedString("action.adjust", comment: "")),
+            (1004, NSLocalizedString("action.beautify", comment: "")),
+            (1005, NSLocalizedString("action.remove_bg", comment: "")),
         ]
         let enabledActions = UserDefaults.standard.array(forKey: "enabledActions") as? [Int]
         let bottomActionsGrid = makeToggleGrid(items: bottomActionItems,
@@ -773,19 +781,21 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.right_toolbar", comment: "")))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
-        let noteC = NSTextField(labelWithString: "Hidden actions are removed from the right toolbar.")
+        let noteC = NSTextField(labelWithString: NSLocalizedString("pref.note.hidden_right", comment: ""))
         noteC.font = NSFont.systemFont(ofSize: 11)
         noteC.textColor = .secondaryLabelColor
         stack.addArrangedSubview(noteC)
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         let rightActionItems: [(tag: Int, label: String)] = [
-            (1001, "Upload"), (1002, "Pin (floating window)"),
-            (1003, "OCR (extract text)"), (1006, "Auto-Redact sensitive data"),
-            (1008, "Translate"),
-            (1009, "Record screen"),
-            (1010, "Scroll Capture"),
-            (1012, "Share"),
+            (1001, NSLocalizedString("action.upload", comment: "")),
+            (1002, NSLocalizedString("action.pin", comment: "")),
+            (1003, NSLocalizedString("action.ocr", comment: "")),
+            (1006, NSLocalizedString("action.auto_redact", comment: "")),
+            (1008, NSLocalizedString("action.translate", comment: "")),
+            (1009, NSLocalizedString("action.record", comment: "")),
+            (1010, NSLocalizedString("action.scroll_capture", comment: "")),
+            (1012, NSLocalizedString("action.share", comment: "")),
         ]
         let rightActionsGrid = makeToggleGrid(items: rightActionItems,
                                               defaultsKey: "enabledActions", enabledValues: enabledActions)
@@ -803,11 +813,18 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         let shortcutItems: [(action: ToolbarButtonAction, label: String)] = [
-            (.tool(.pencil), "Pencil"), (.tool(.arrow), "Arrow"), (.tool(.line), "Line"),
-            (.tool(.rectangle), "Rectangle"), (.tool(.text), "Text"), (.tool(.marker), "Marker"),
-            (.tool(.number), "Number"), (.tool(.pixelate), "Censor"),
-            (.tool(.colorSampler), "Color Picker"), (.tool(.select), "Select"),
-            (.tool(.stamp), "Stamp"), (.detach, "Open in Editor"),
+            (.tool(.pencil), NSLocalizedString("tool.pencil", comment: "")),
+            (.tool(.arrow), NSLocalizedString("tool.arrow", comment: "")),
+            (.tool(.line), NSLocalizedString("tool.line", comment: "")),
+            (.tool(.rectangle), NSLocalizedString("tool.rectangle", comment: "")),
+            (.tool(.text), NSLocalizedString("tool.text", comment: "")),
+            (.tool(.marker), NSLocalizedString("tool.marker", comment: "")),
+            (.tool(.number), NSLocalizedString("tool.number", comment: "")),
+            (.tool(.pixelate), NSLocalizedString("tool.censor", comment: "")),
+            (.tool(.colorSampler), NSLocalizedString("tool.color_picker", comment: "")),
+            (.tool(.select), NSLocalizedString("tool.select", comment: "")),
+            (.tool(.stamp), NSLocalizedString("tool.stamp", comment: "")),
+            (.detach, NSLocalizedString("tool.open_in_editor", comment: "")),
         ]
 
         let shortcutGrid = NSGridView()
