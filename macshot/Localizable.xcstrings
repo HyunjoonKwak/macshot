@@ -329,6 +329,559 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Timestamp Format:" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "타임스탬프 형식:" } }
       }
+    },
+    "pref.shortcuts_tab" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shortcuts" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "단축키" } }
+      }
+    },
+    "pref.section.capture" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Capture" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "캡처" } }
+      }
+    },
+    "pref.section.output" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Output" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "출력" } }
+      }
+    },
+    "pref.section.watermark" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Watermark" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "워터마크" } }
+      }
+    },
+    "pref.section.timestamp_overlay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Timestamp Overlay" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "타임스탬프 오버레이" } }
+      }
+    },
+    "pref.section.appearance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Appearance" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "외관" } }
+      }
+    },
+    "pref.section.keyboard_shortcuts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keyboard Shortcuts" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "키보드 단축키" } }
+      }
+    },
+    "pref.section.annotation_tools" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Annotation Tools" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "주석 도구" } }
+      }
+    },
+    "pref.section.bottom_toolbar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bottom Toolbar Actions" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "하단 툴바 액션" } }
+      }
+    },
+    "pref.section.right_toolbar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Right Toolbar Actions" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "우측 툴바 액션" } }
+      }
+    },
+    "pref.section.behavior" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Behavior" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동작" } }
+      }
+    },
+    "pref.section.scroll_capture" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scroll Capture" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "스크롤 캡처" } }
+      }
+    },
+    "pref.section.upload_provider" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Upload Provider" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "업로드 제공자" } }
+      }
+    },
+    "pref.section.google_drive" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Google Drive" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Google Drive" } }
+      }
+    },
+    "pref.section.s3_storage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "S3-Compatible Storage" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "S3 호환 스토리지" } }
+      }
+    },
+    "pref.section.webhook" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Webhook (Custom HTTP POST)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Webhook (커스텀 HTTP POST)" } }
+      }
+    },
+    "pref.section.imgbb" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "imgbb" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "imgbb" } }
+      }
+    },
+    "pref.section.upload_history" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Upload History" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "업로드 히스토리" } }
+      }
+    },
+    "pref.cb.play_sound" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Play sound on copy" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "복사 시 사운드 재생" } }
+      }
+    },
+    "pref.cb.remember_selection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remember last selection area" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "마지막 선택 영역 기억" } }
+      }
+    },
+    "pref.cb.remember_tool" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remember last selected tool" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "마지막 사용 도구 기억" } }
+      }
+    },
+    "pref.cb.floating_thumbnail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show floating thumbnail after capture" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "캡처 후 플로팅 썸네일 표시" } }
+      }
+    },
+    "pref.cb.launch_at_login" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Launch at login" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로그인 시 자동 실행" } }
+      }
+    },
+    "pref.cb.snap_guides" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show snap alignment guides" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "스냅 정렬 가이드 표시" } }
+      }
+    },
+    "pref.cb.capture_cursor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Capture mouse cursor in screenshot" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "스크린샷에 마우스 커서 포함" } }
+      }
+    },
+    "pref.cb.window_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Use window title in saved filename" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 파일명에 윈도우 제목 사용" } }
+      }
+    },
+    "pref.cb.auto_save_on_copy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Auto-save file when copying to clipboard" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "클립보드 복사 시 파일 자동 저장" } }
+      }
+    },
+    "pref.cb.notification" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show notification after capture" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "캡처 후 알림 표시" } }
+      }
+    },
+    "pref.cb.clipboard_watch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Watch clipboard for new images" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "클립보드 새 이미지 감시" } }
+      }
+    },
+    "pref.cb.hide_menubar_icon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hide menu bar icon" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "메뉴바 아이콘 숨기기" } }
+      }
+    },
+    "pref.cb.auto_update" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Check for updates automatically" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "자동 업데이트 확인" } }
+      }
+    },
+    "pref.cb.downscale_retina" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save at standard resolution (1x)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "표준 해상도(1x)로 저장" } }
+      }
+    },
+    "pref.cb.embed_color_profile" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Embed sRGB color profile" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "sRGB 색상 프로필 포함" } }
+      }
+    },
+    "pref.cb.strip_metadata" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Strip EXIF/metadata from saved images" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 이미지에서 EXIF/메타데이터 제거" } }
+      }
+    },
+    "pref.cb.add_shadow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add drop shadow to saved images" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 이미지에 그림자 추가" } }
+      }
+    },
+    "pref.cb.timestamp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add capture timestamp to saved images" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 이미지에 캡처 타임스탬프 추가" } }
+      }
+    },
+    "pref.cb.auto_scroll" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Auto-scroll (sends synthetic scroll events)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "자동 스크롤 (합성 스크롤 이벤트 전송)" } }
+      }
+    },
+    "pref.cb.frozen_detection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Detect fixed/sticky headers" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "고정/스티키 헤더 감지" } }
+      }
+    },
+    "pref.label.quick_capture" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter / Quick Capture:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Enter / 빠른 캡처:" } }
+      }
+    },
+    "pref.label.ocr_capture" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "OCR Capture:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "OCR 캡처:" } }
+      }
+    },
+    "pref.label.auto_dismiss" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dismiss after:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "자동 닫기:" } }
+      }
+    },
+    "pref.label.multiple_previews" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Multiple previews:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다중 미리보기:" } }
+      }
+    },
+    "pref.label.shift_drag_ratio" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shift-drag ratio:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Shift 드래그 비율:" } }
+      }
+    },
+    "pref.label.save_folder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save folder:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 폴더:" } }
+      }
+    },
+    "pref.label.image_format" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Image format:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이미지 형식:" } }
+      }
+    },
+    "pref.label.quality" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quality:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "품질:" } }
+      }
+    },
+    "pref.label.max_dimension" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Max dimension (px):" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최대 크기 (px):" } }
+      }
+    },
+    "pref.label.text" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Text:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "텍스트:" } }
+      }
+    },
+    "pref.label.opacity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Opacity:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "투명도:" } }
+      }
+    },
+    "pref.label.history_size" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "History size:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "히스토리 크기:" } }
+      }
+    },
+    "pref.label.accent_color" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Accent color:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "강조 색상:" } }
+      }
+    },
+    "pref.label.icon_color" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Icon color:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "아이콘 색상:" } }
+      }
+    },
+    "pref.label.format" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Format:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "형식:" } }
+      }
+    },
+    "pref.label.frame_rate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Frame rate:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "프레임 레이트:" } }
+      }
+    },
+    "pref.label.when_done" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When done:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료 후:" } }
+      }
+    },
+    "pref.label.speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scroll speed:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "속도:" } }
+      }
+    },
+    "pref.label.max_height" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Max height:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최대 높이:" } }
+      }
+    },
+    "pref.label.provider" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Provider:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "제공자:" } }
+      }
+    },
+    "pref.label.account" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Account:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "계정:" } }
+      }
+    },
+    "pref.label.endpoint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Endpoint:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "엔드포인트:" } }
+      }
+    },
+    "pref.label.region" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Region:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "리전:" } }
+      }
+    },
+    "pref.label.bucket" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bucket:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "버킷:" } }
+      }
+    },
+    "pref.label.access_key" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Access Key:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "액세스 키:" } }
+      }
+    },
+    "pref.label.secret_key" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Secret Key:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시크릿 키:" } }
+      }
+    },
+    "pref.label.public_url" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Public URL:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "공개 URL:" } }
+      }
+    },
+    "pref.label.path_prefix" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Path Prefix:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "경로 접두사:" } }
+      }
+    },
+    "pref.label.url" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "URL:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "URL:" } }
+      }
+    },
+    "pref.label.field_name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Field Name:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "필드 이름:" } }
+      }
+    },
+    "pref.label.headers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Headers:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "헤더:" } }
+      }
+    },
+    "pref.label.response_url_path" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Response URL Path:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "응답 URL 경로:" } }
+      }
+    },
+    "pref.label.api_key" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "API key:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "API 키:" } }
+      }
+    },
+    "pref.btn.browse" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Browse…" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "찾아보기…" } }
+      }
+    },
+    "pref.btn.clear" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "초기화" } }
+      }
+    },
+    "pref.btn.test_connection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Test Connection" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "연결 테스트" } }
+      }
+    },
+    "pref.btn.sign_in_google" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign In with Google" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Google 로그인" } }
+      }
+    },
+    "pref.btn.sign_out" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign Out" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로그아웃" } }
+      }
+    },
+    "pref.btn.open_editor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open editor" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "편집기 열기" } }
+      }
+    },
+    "pref.btn.show_in_finder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show in Finder" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Finder에서 보기" } }
+      }
+    },
+    "pref.btn.copy_to_clipboard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy to clipboard" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "클립보드에 복사" } }
+      }
     }
   },
   "version" : "1.0"

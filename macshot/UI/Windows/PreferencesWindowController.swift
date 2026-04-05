@@ -126,32 +126,32 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         tabView.delegate = self
 
         let generalTab = NSTabViewItem(identifier: "general")
-        generalTab.label = "General"
+        generalTab.label = NSLocalizedString("pref.general", comment: "")
         generalTab.view = makeGeneralTabView()
         tabView.addTabViewItem(generalTab)
 
         let shortcutsTab = NSTabViewItem(identifier: "shortcuts")
-        shortcutsTab.label = "Shortcuts"
+        shortcutsTab.label = NSLocalizedString("pref.shortcuts_tab", comment: "")
         shortcutsTab.view = makeShortcutsTabView()
         tabView.addTabViewItem(shortcutsTab)
 
         let toolsTab = NSTabViewItem(identifier: "tools")
-        toolsTab.label = "Tools"
+        toolsTab.label = NSLocalizedString("pref.tools", comment: "")
         toolsTab.view = makeToolsTabView()
         tabView.addTabViewItem(toolsTab)
 
         let recordingTab = NSTabViewItem(identifier: "recording")
-        recordingTab.label = "Recording"
+        recordingTab.label = NSLocalizedString("pref.recording", comment: "")
         recordingTab.view = makeRecordingTabView()
         tabView.addTabViewItem(recordingTab)
 
         let uploadsTab = NSTabViewItem(identifier: "uploads")
-        uploadsTab.label = "Uploads"
+        uploadsTab.label = NSLocalizedString("pref.upload", comment: "")
         uploadsTab.view = makeUploadsTabView()
         tabView.addTabViewItem(uploadsTab)
 
         let aboutTab = NSTabViewItem(identifier: "about")
-        aboutTab.label = "About"
+        aboutTab.label = NSLocalizedString("pref.about", comment: "")
         aboutTab.view = makeAboutTabView()
         tabView.addTabViewItem(aboutTab)
 
@@ -232,7 +232,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 16, right: 20)
 
         // ── Capture ──────────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader("Capture"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.capture", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         // Enter key action
@@ -241,7 +241,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         quickModePopup.target = self
         quickModePopup.action = #selector(quickModeChanged(_:))
 
-        stack.addArrangedSubview(labeledRow("Enter / Quick Capture:", controls: [quickModePopup]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.quick_capture", comment: ""), controls: [quickModePopup]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         // OCR action dropdown
@@ -254,20 +254,20 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         ocrActionPopup.target = self
         ocrActionPopup.action = #selector(ocrActionChanged(_:))
 
-        stack.addArrangedSubview(labeledRow("OCR Capture:", controls: [ocrActionPopup]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.ocr_capture", comment: ""), controls: [ocrActionPopup]))
         stack.setCustomSpacing(12, after: stack.arrangedSubviews.last!)
 
         // Checkboxes
-        copySoundCheckbox = NSButton(checkboxWithTitle: "Play sound on copy", target: self, action: #selector(copySoundChanged(_:)))
-        rememberSelectionCheckbox = NSButton(checkboxWithTitle: "Remember last selection area", target: self, action: #selector(rememberSelectionChanged(_:)))
-        rememberToolCheckbox = NSButton(checkboxWithTitle: "Remember last selected tool", target: self, action: #selector(rememberToolChanged(_:)))
-        thumbnailCheckbox = NSButton(checkboxWithTitle: "Show floating thumbnail after capture", target: self, action: #selector(thumbnailChanged(_:)))
-        launchAtLoginCheckbox = NSButton(checkboxWithTitle: "Launch at login", target: self, action: #selector(launchAtLoginChanged(_:)))
-        snapGuidesCheckbox = NSButton(checkboxWithTitle: "Show snap alignment guides", target: self, action: #selector(snapGuidesChanged(_:)))
-        captureCursorCheckbox = NSButton(checkboxWithTitle: "Capture mouse cursor in screenshot", target: self, action: #selector(captureCursorChanged(_:)))
-        windowTitleCheckbox = NSButton(checkboxWithTitle: "Use window title in saved filename", target: self, action: #selector(windowTitleChanged(_:)))
-        autoSaveOnCopyCheckbox = NSButton(checkboxWithTitle: "Auto-save file when copying to clipboard", target: self, action: #selector(autoSaveOnCopyChanged(_:)))
-        notificationCheckbox = NSButton(checkboxWithTitle: "Show notification after capture", target: self, action: #selector(notificationChanged(_:)))
+        copySoundCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.play_sound", comment: ""), target: self, action: #selector(copySoundChanged(_:)))
+        rememberSelectionCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.remember_selection", comment: ""), target: self, action: #selector(rememberSelectionChanged(_:)))
+        rememberToolCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.remember_tool", comment: ""), target: self, action: #selector(rememberToolChanged(_:)))
+        thumbnailCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.floating_thumbnail", comment: ""), target: self, action: #selector(thumbnailChanged(_:)))
+        launchAtLoginCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.launch_at_login", comment: ""), target: self, action: #selector(launchAtLoginChanged(_:)))
+        snapGuidesCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.snap_guides", comment: ""), target: self, action: #selector(snapGuidesChanged(_:)))
+        captureCursorCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.capture_cursor", comment: ""), target: self, action: #selector(captureCursorChanged(_:)))
+        windowTitleCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.window_title", comment: ""), target: self, action: #selector(windowTitleChanged(_:)))
+        autoSaveOnCopyCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.auto_save_on_copy", comment: ""), target: self, action: #selector(autoSaveOnCopyChanged(_:)))
+        notificationCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.notification", comment: ""), target: self, action: #selector(notificationChanged(_:)))
 
         for cb in [copySoundCheckbox!, rememberSelectionCheckbox!, rememberToolCheckbox!, thumbnailCheckbox!] {
             stack.addArrangedSubview(indented(cb))
@@ -292,7 +292,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         dismissNote.font = NSFont.systemFont(ofSize: 11)
         dismissNote.textColor = .secondaryLabelColor
 
-        stack.addArrangedSubview(indented(labeledRow("  Dismiss after:", controls: [thumbnailAutoDismissField!, thumbnailAutoDismissStepper!, dismissNote])))
+        stack.addArrangedSubview(indented(labeledRow("  " + NSLocalizedString("pref.label.auto_dismiss", comment: ""), controls: [thumbnailAutoDismissField!, thumbnailAutoDismissStepper!, dismissNote])))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         // Thumbnail stacking popup
@@ -301,7 +301,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         thumbnailStackingPopup.target = self
         thumbnailStackingPopup.action = #selector(thumbnailStackingChanged(_:))
 
-        stack.addArrangedSubview(indented(labeledRow("  Multiple previews:", controls: [thumbnailStackingPopup!])))
+        stack.addArrangedSubview(indented(labeledRow("  " + NSLocalizedString("pref.label.multiple_previews", comment: ""), controls: [thumbnailStackingPopup!])))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         stack.addArrangedSubview(indented(snapGuidesCheckbox))
@@ -318,7 +318,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         aspectRatioPopup.selectItem(at: UserDefaults.standard.integer(forKey: "captureAspectRatio"))
         aspectRatioPopup.target = self
         aspectRatioPopup.action = #selector(aspectRatioChanged(_:))
-        stack.addArrangedSubview(labeledRow("Shift-drag ratio:", controls: [aspectRatioPopup]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.shift_drag_ratio", comment: ""), controls: [aspectRatioPopup]))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         stack.addArrangedSubview(indented(autoSaveOnCopyCheckbox))
@@ -327,7 +327,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.addArrangedSubview(indented(notificationCheckbox))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
-        clipboardWatchCheckbox = NSButton(checkboxWithTitle: "Watch clipboard for new images", target: self, action: #selector(clipboardWatchChanged(_:)))
+        clipboardWatchCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.clipboard_watch", comment: ""), target: self, action: #selector(clipboardWatchChanged(_:)))
         stack.addArrangedSubview(indented(clipboardWatchCheckbox))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
         let autoSaveNote = NSTextField(labelWithString: "Saves a copy to default folder whenever you copy a screenshot")
@@ -339,7 +339,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.addArrangedSubview(indented(launchAtLoginCheckbox))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
-        hideMenuBarIconCheckbox = NSButton(checkboxWithTitle: "Hide menu bar icon", target: self, action: #selector(hideMenuBarIconChanged(_:)))
+        hideMenuBarIconCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.hide_menubar_icon", comment: ""), target: self, action: #selector(hideMenuBarIconChanged(_:)))
         stack.addArrangedSubview(indented(hideMenuBarIconCheckbox))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
@@ -349,14 +349,14 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.addArrangedSubview(indented(hideNote))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
-        autoUpdateCheckbox = NSButton(checkboxWithTitle: "Check for updates automatically", target: self, action: #selector(autoUpdateChanged(_:)))
+        autoUpdateCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.auto_update", comment: ""), target: self, action: #selector(autoUpdateChanged(_:)))
         stack.addArrangedSubview(indented(autoUpdateCheckbox))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Output ───────────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader("Output"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.output", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         // Save folder
@@ -365,10 +365,10 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         savePathField.isSelectable = false
         savePathField.lineBreakMode = .byTruncatingMiddle
 
-        let browseBtn = NSButton(title: "Browse…", target: self, action: #selector(browseSavePath(_:)))
+        let browseBtn = NSButton(title: NSLocalizedString("pref.btn.browse", comment: ""), target: self, action: #selector(browseSavePath(_:)))
         browseBtn.bezelStyle = .rounded
 
-        stack.addArrangedSubview(labeledRow("Save folder:", controls: [savePathField, browseBtn]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.save_folder", comment: ""), controls: [savePathField, browseBtn]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         // Image format
@@ -377,7 +377,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         imageFormatPopup.target = self
         imageFormatPopup.action = #selector(imageFormatChanged(_:))
 
-        stack.addArrangedSubview(labeledRow("Image format:", controls: [imageFormatPopup]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.image_format", comment: ""), controls: [imageFormatPopup]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         // Quality (applies to JPEG and HEIC)
@@ -392,7 +392,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         qualityLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
         qualityLabel.widthAnchor.constraint(equalToConstant: 44).isActive = true
 
-        qualityRowLabel = NSTextField(labelWithString: "Quality:")
+        qualityRowLabel = NSTextField(labelWithString: NSLocalizedString("pref.label.quality", comment: ""))
         qualityRowLabel.font = NSFont.systemFont(ofSize: 13)
         qualityRowLabel.alignment = .right
         qualityRowLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -408,7 +408,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         // Downscale Retina
-        downscaleRetinaCheckbox = NSButton(checkboxWithTitle: "Save at standard resolution (1x)", target: self, action: #selector(downscaleRetinaChanged(_:)))
+        downscaleRetinaCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.downscale_retina", comment: ""), target: self, action: #selector(downscaleRetinaChanged(_:)))
         stack.addArrangedSubview(indented(downscaleRetinaCheckbox))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
 
@@ -419,7 +419,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         // Embed color profile
-        embedColorProfileCheckbox = NSButton(checkboxWithTitle: "Embed sRGB color profile", target: self, action: #selector(embedColorProfileChanged(_:)))
+        embedColorProfileCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.embed_color_profile", comment: ""), target: self, action: #selector(embedColorProfileChanged(_:)))
         stack.addArrangedSubview(indented(embedColorProfileCheckbox))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
 
@@ -430,7 +430,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         // Strip metadata
-        stripMetadataCheckbox = NSButton(checkboxWithTitle: "Strip EXIF/metadata from saved images", target: self, action: #selector(stripMetadataChanged(_:)))
+        stripMetadataCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.strip_metadata", comment: ""), target: self, action: #selector(stripMetadataChanged(_:)))
         stack.addArrangedSubview(indented(stripMetadataCheckbox))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
 
@@ -441,7 +441,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         // Drop shadow
-        addShadowCheckbox = NSButton(checkboxWithTitle: "Add drop shadow to saved images", target: self, action: #selector(addShadowChanged(_:)))
+        addShadowCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.add_shadow", comment: ""), target: self, action: #selector(addShadowChanged(_:)))
         stack.addArrangedSubview(indented(addShadowCheckbox))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
 
@@ -460,7 +460,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         maxDimensionField.stringValue = savedMax > 0 ? "\(savedMax)" : ""
         maxDimensionField.target = self
         maxDimensionField.action = #selector(maxDimensionChanged(_:))
-        stack.addArrangedSubview(labeledRow("Max dimension (px):", controls: [maxDimensionField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.max_dimension", comment: ""), controls: [maxDimensionField]))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
 
         let maxDimNote = NSTextField(labelWithString: "Resize if width or height exceeds this. 0 or empty = no limit.")
@@ -470,7 +470,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         // Watermark
-        stack.addArrangedSubview(sectionHeader("Watermark"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.watermark", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         watermarkTextField = NSTextField()
@@ -479,7 +479,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         watermarkTextField.stringValue = UserDefaults.standard.string(forKey: "watermarkText") ?? ""
         watermarkTextField.target = self
         watermarkTextField.action = #selector(watermarkTextChanged(_:))
-        stack.addArrangedSubview(labeledRow("Text:", controls: [watermarkTextField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.text", comment: ""), controls: [watermarkTextField]))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         watermarkOpacitySlider = NSSlider(value: (UserDefaults.standard.object(forKey: "watermarkOpacity") as? Double ?? 0.3) * 100,
@@ -488,7 +488,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         watermarkOpacityLabel = NSTextField(labelWithString: "\(Int(watermarkOpacitySlider.doubleValue))%")
         watermarkOpacityLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         watermarkOpacityLabel.widthAnchor.constraint(equalToConstant: 36).isActive = true
-        stack.addArrangedSubview(labeledRow("Opacity:", controls: [watermarkOpacitySlider, watermarkOpacityLabel]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.opacity", comment: ""), controls: [watermarkOpacitySlider, watermarkOpacityLabel]))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
 
         let wmNote = NSTextField(labelWithString: "Displayed in the bottom-right corner of saved images")
@@ -498,10 +498,10 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         // Timestamp overlay
-        stack.addArrangedSubview(sectionHeader("Timestamp Overlay"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.timestamp_overlay", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
-        timestampCheckbox = NSButton(checkboxWithTitle: "Add capture timestamp to saved images", target: self, action: #selector(timestampChanged(_:)))
+        timestampCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.timestamp", comment: ""), target: self, action: #selector(timestampChanged(_:)))
         timestampCheckbox.state = UserDefaults.standard.bool(forKey: "addTimestampOverlay") ? .on : .off
         stack.addArrangedSubview(indented(timestampCheckbox))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
@@ -539,11 +539,11 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         histNote.font = NSFont.systemFont(ofSize: 11)
         histNote.textColor = .secondaryLabelColor
 
-        stack.addArrangedSubview(labeledRow("History size:", controls: [historySizeField, historySizeStepper, histNote]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.history_size", comment: ""), controls: [historySizeField, historySizeStepper, histNote]))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Appearance ───────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader("Appearance"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.appearance", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         accentColorWell = NSColorWell(frame: NSRect(x: 0, y: 0, width: 36, height: 24))
@@ -560,9 +560,9 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         resetColorsBtn.bezelStyle = .rounded
         resetColorsBtn.controlSize = .small
 
-        stack.addArrangedSubview(indented(labeledRow("Accent color:", controls: [accentColorWell])))
+        stack.addArrangedSubview(indented(labeledRow(NSLocalizedString("pref.label.accent_color", comment: ""), controls: [accentColorWell])))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
-        stack.addArrangedSubview(indented(labeledRow("Icon color:", controls: [iconColorWell])))
+        stack.addArrangedSubview(indented(labeledRow(NSLocalizedString("pref.label.icon_color", comment: ""), controls: [iconColorWell])))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
         stack.addArrangedSubview(indented(labeledRow("", controls: [resetColorsBtn])))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
@@ -598,7 +598,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 16, right: 20)
 
-        stack.addArrangedSubview(sectionHeader("Keyboard Shortcuts"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.keyboard_shortcuts", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         for slot in HotkeyManager.HotkeySlot.allCases {
@@ -725,7 +725,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 16, right: 20)
 
         // ── Annotation Tools ─────────────────────────────────
-        stack.addArrangedSubview(sectionHeader("Annotation Tools"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.annotation_tools", comment: "")))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
         let noteA = NSTextField(labelWithString: "Hidden tools are removed from the bottom toolbar.")
@@ -748,7 +748,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Bottom Toolbar Actions ───────────────────────────
-        stack.addArrangedSubview(sectionHeader("Bottom Toolbar Actions"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.bottom_toolbar", comment: "")))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
         let noteB = NSTextField(labelWithString: "Hidden actions are removed from the bottom toolbar.")
@@ -770,7 +770,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Right Toolbar Actions ────────────────────────────
-        stack.addArrangedSubview(sectionHeader("Right Toolbar Actions"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.right_toolbar", comment: "")))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
         let noteC = NSTextField(labelWithString: "Hidden actions are removed from the right toolbar.")
@@ -869,21 +869,21 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 16, right: 20)
 
         // ── Format ────────────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader("Output"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.output", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         recordingFormatPopup = NSPopUpButton()
         recordingFormatPopup.addItems(withTitles: ["MP4 (H.264)", "GIF"])
         recordingFormatPopup.target = self
         recordingFormatPopup.action = #selector(recordingFormatChanged(_:))
-        stack.addArrangedSubview(labeledRow("Format:", controls: [recordingFormatPopup]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.format", comment: ""), controls: [recordingFormatPopup]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         recordingFPSPopup = NSPopUpButton()
         recordingFPSPopup.addItems(withTitles: ["15 fps", "24 fps", "30 fps", "60 fps", "120 fps"])
         recordingFPSPopup.target = self
         recordingFPSPopup.action = #selector(recordingFPSChanged(_:))
-        stack.addArrangedSubview(labeledRow("Frame rate:", controls: [recordingFPSPopup]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.frame_rate", comment: ""), controls: [recordingFPSPopup]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         recSavePathField = NSTextField()
@@ -891,30 +891,30 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         recSavePathField.isSelectable = false
         recSavePathField.lineBreakMode = .byTruncatingMiddle
 
-        let recBrowseBtn = NSButton(title: "Browse…", target: self, action: #selector(browseRecSavePath(_:)))
+        let recBrowseBtn = NSButton(title: NSLocalizedString("pref.btn.browse", comment: ""), target: self, action: #selector(browseRecSavePath(_:)))
         recBrowseBtn.bezelStyle = .rounded
-        let recClearBtn = NSButton(title: "Clear", target: self, action: #selector(clearRecSavePath(_:)))
+        let recClearBtn = NSButton(title: NSLocalizedString("pref.btn.clear", comment: ""), target: self, action: #selector(clearRecSavePath(_:)))
         recClearBtn.bezelStyle = .rounded
 
-        stack.addArrangedSubview(labeledRow("Save folder:", controls: [recSavePathField, recBrowseBtn, recClearBtn]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.save_folder", comment: ""), controls: [recSavePathField, recBrowseBtn, recClearBtn]))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Behavior ──────────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader("Behavior"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.behavior", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         recordingOnStopPopup = NSPopUpButton()
-        recordingOnStopPopup.addItems(withTitles: ["Open editor", "Show in Finder", "Copy to clipboard"])
+        recordingOnStopPopup.addItems(withTitles: [NSLocalizedString("pref.btn.open_editor", comment: ""), NSLocalizedString("pref.btn.show_in_finder", comment: ""), NSLocalizedString("pref.btn.copy_to_clipboard", comment: "")])
         recordingOnStopPopup.target = self
         recordingOnStopPopup.action = #selector(recordingOnStopChanged(_:))
-        stack.addArrangedSubview(labeledRow("When done:", controls: [recordingOnStopPopup]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.when_done", comment: ""), controls: [recordingOnStopPopup]))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Scroll Capture ────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader("Scroll Capture"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.scroll_capture", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
-        scrollAutoScrollCheckbox = NSButton(checkboxWithTitle: "Auto-scroll (sends synthetic scroll events)",
+        scrollAutoScrollCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.auto_scroll", comment: ""),
                                             target: self, action: #selector(scrollAutoScrollChanged(_:)))
         stack.addArrangedSubview(scrollAutoScrollCheckbox)
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
@@ -923,7 +923,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         scrollSpeedPopup.addItems(withTitles: ["Slow", "Medium", "Fast", "Very fast"])
         scrollSpeedPopup.target = self
         scrollSpeedPopup.action = #selector(scrollSpeedChanged(_:))
-        stack.addArrangedSubview(labeledRow("Scroll speed:", controls: [scrollSpeedPopup]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.speed", comment: ""), controls: [scrollSpeedPopup]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         scrollMaxHeightField = NSTextField()
@@ -944,10 +944,10 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         let maxHeightNote = NSTextField(labelWithString: "px (0 = unlimited)")
         maxHeightNote.font = .systemFont(ofSize: 11)
         maxHeightNote.textColor = .secondaryLabelColor
-        stack.addArrangedSubview(labeledRow("Max height:", controls: [scrollMaxHeightField, scrollMaxHeightStepper, maxHeightNote]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.max_height", comment: ""), controls: [scrollMaxHeightField, scrollMaxHeightStepper, maxHeightNote]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
-        scrollFrozenDetectionCheckbox = NSButton(checkboxWithTitle: "Detect fixed/sticky headers",
+        scrollFrozenDetectionCheckbox = NSButton(checkboxWithTitle: NSLocalizedString("pref.cb.frozen_detection", comment: ""),
                                                  target: self, action: #selector(scrollFrozenDetectionChanged(_:)))
         stack.addArrangedSubview(scrollFrozenDetectionCheckbox)
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
@@ -989,7 +989,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 16, right: 20)
 
         // ── Upload Provider ──
-        stack.addArrangedSubview(sectionHeader("Upload Provider"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.upload_provider", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         providerPopup = NSPopUpButton()
@@ -1003,11 +1003,11 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         }
         providerPopup.target = self
         providerPopup.action = #selector(uploadProviderChanged(_:))
-        stack.addArrangedSubview(labeledRow("Provider:", controls: [providerPopup]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.provider", comment: ""), controls: [providerPopup]))
         stack.setCustomSpacing(16, after: stack.arrangedSubviews.last!)
 
         // ── Google Drive ──
-        stack.addArrangedSubview(sectionHeader("Google Drive"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.google_drive", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         gdriveStatusLabel = NSTextField(labelWithString: "")
@@ -1015,11 +1015,11 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         gdriveStatusLabel.textColor = .secondaryLabelColor
         updateGDriveStatus()
 
-        gdriveSignInBtn = NSButton(title: "Sign In with Google", target: self, action: #selector(gdriveSignInTapped(_:)))
+        gdriveSignInBtn = NSButton(title: NSLocalizedString("pref.btn.sign_in_google", comment: ""), target: self, action: #selector(gdriveSignInTapped(_:)))
         gdriveSignInBtn.bezelStyle = .rounded
         updateGDriveButton()
 
-        stack.addArrangedSubview(labeledRow("Account:", controls: [gdriveStatusLabel]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.account", comment: ""), controls: [gdriveStatusLabel]))
         stack.addArrangedSubview(indented(gdriveSignInBtn))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
@@ -1030,7 +1030,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(16, after: stack.arrangedSubviews.last!)
 
         // ── S3-Compatible ──
-        stack.addArrangedSubview(sectionHeader("S3-Compatible Storage"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.s3_storage", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         s3EndpointField = NSTextField()
@@ -1039,7 +1039,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         s3EndpointField.stringValue = UserDefaults.standard.string(forKey: "s3Endpoint") ?? ""
         s3EndpointField.target = self
         s3EndpointField.action = #selector(s3FieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("Endpoint:", controls: [s3EndpointField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.endpoint", comment: ""), controls: [s3EndpointField]))
 
         s3RegionField = NSTextField()
         s3RegionField.placeholderString = "auto"
@@ -1047,7 +1047,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         s3RegionField.stringValue = UserDefaults.standard.string(forKey: "s3Region") ?? "auto"
         s3RegionField.target = self
         s3RegionField.action = #selector(s3FieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("Region:", controls: [s3RegionField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.region", comment: ""), controls: [s3RegionField]))
 
         s3BucketField = NSTextField()
         s3BucketField.placeholderString = "my-bucket"
@@ -1055,7 +1055,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         s3BucketField.stringValue = UserDefaults.standard.string(forKey: "s3Bucket") ?? ""
         s3BucketField.target = self
         s3BucketField.action = #selector(s3FieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("Bucket:", controls: [s3BucketField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.bucket", comment: ""), controls: [s3BucketField]))
 
         s3AccessKeyField = NSTextField()
         s3AccessKeyField.placeholderString = "AKIAIOSFODNN7EXAMPLE"
@@ -1063,7 +1063,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         s3AccessKeyField.stringValue = UserDefaults.standard.string(forKey: "s3AccessKeyID") ?? ""
         s3AccessKeyField.target = self
         s3AccessKeyField.action = #selector(s3FieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("Access Key:", controls: [s3AccessKeyField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.access_key", comment: ""), controls: [s3AccessKeyField]))
 
         s3SecretKeyField = NSSecureTextField()
         s3SecretKeyField.placeholderString = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
@@ -1071,7 +1071,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         s3SecretKeyField.stringValue = UserDefaults.standard.string(forKey: "s3SecretAccessKey") ?? ""
         s3SecretKeyField.target = self
         s3SecretKeyField.action = #selector(s3FieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("Secret Key:", controls: [s3SecretKeyField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.secret_key", comment: ""), controls: [s3SecretKeyField]))
 
         s3PublicURLField = NSTextField()
         s3PublicURLField.placeholderString = "https://cdn.example.com"
@@ -1079,7 +1079,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         s3PublicURLField.stringValue = UserDefaults.standard.string(forKey: "s3PublicURLBase") ?? ""
         s3PublicURLField.target = self
         s3PublicURLField.action = #selector(s3FieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("Public URL:", controls: [s3PublicURLField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.public_url", comment: ""), controls: [s3PublicURLField]))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
         let publicURLNote = NSTextField(wrappingLabelWithString: "Base URL for public access. If empty, the S3 endpoint URL is used (may not be publicly accessible).")
@@ -1093,10 +1093,10 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         s3PathPrefixField.stringValue = UserDefaults.standard.string(forKey: "s3PathPrefix") ?? ""
         s3PathPrefixField.target = self
         s3PathPrefixField.action = #selector(s3FieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("Path Prefix:", controls: [s3PathPrefixField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.path_prefix", comment: ""), controls: [s3PathPrefixField]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
-        s3TestBtn = NSButton(title: "Test Connection", target: self, action: #selector(s3TestTapped(_:)))
+        s3TestBtn = NSButton(title: NSLocalizedString("pref.btn.test_connection", comment: ""), target: self, action: #selector(s3TestTapped(_:)))
         s3TestBtn.bezelStyle = .rounded
 
         s3StatusLabel = NSTextField(labelWithString: "")
@@ -1117,7 +1117,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(16, after: stack.arrangedSubviews.last!)
 
         // ── Webhook ──
-        stack.addArrangedSubview(sectionHeader("Webhook (Custom HTTP POST)"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.webhook", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         webhookURLField = NSTextField()
@@ -1126,7 +1126,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         webhookURLField.stringValue = UserDefaults.standard.string(forKey: "webhookURL") ?? ""
         webhookURLField.target = self
         webhookURLField.action = #selector(webhookFieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("URL:", controls: [webhookURLField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.url", comment: ""), controls: [webhookURLField]))
 
         webhookFieldNameField = NSTextField()
         webhookFieldNameField.placeholderString = "file"
@@ -1134,7 +1134,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         webhookFieldNameField.stringValue = UserDefaults.standard.string(forKey: "webhookFieldName") ?? "file"
         webhookFieldNameField.target = self
         webhookFieldNameField.action = #selector(webhookFieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("Field Name:", controls: [webhookFieldNameField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.field_name", comment: ""), controls: [webhookFieldNameField]))
 
         webhookHeadersField = NSTextField()
         webhookHeadersField.placeholderString = "Authorization: Bearer token123"
@@ -1142,7 +1142,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         webhookHeadersField.stringValue = UserDefaults.standard.string(forKey: "webhookHeaders") ?? ""
         webhookHeadersField.target = self
         webhookHeadersField.action = #selector(webhookFieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("Headers:", controls: [webhookHeadersField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.headers", comment: ""), controls: [webhookHeadersField]))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
         let headerNote = NSTextField(wrappingLabelWithString: "One header per line: \"Key: Value\" format.")
@@ -1156,7 +1156,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         webhookResponsePathField.stringValue = UserDefaults.standard.string(forKey: "webhookResponseURLPath") ?? "url"
         webhookResponsePathField.target = self
         webhookResponsePathField.action = #selector(webhookFieldChanged(_:))
-        stack.addArrangedSubview(labeledRow("Response URL Path:", controls: [webhookResponsePathField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.response_url_path", comment: ""), controls: [webhookResponsePathField]))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
         let responseNote = NSTextField(wrappingLabelWithString: "Dot-separated JSON key path to extract the uploaded file URL from the response (e.g. \"data.url\", \"link\").")
@@ -1166,7 +1166,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(16, after: stack.arrangedSubviews.last!)
 
         // ── imgbb ──
-        stack.addArrangedSubview(sectionHeader("imgbb"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.imgbb", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         imgbbKeyField = NSTextField()
@@ -1178,7 +1178,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
             imgbbKeyField.stringValue = key
         }
 
-        stack.addArrangedSubview(labeledRow("API key:", controls: [imgbbKeyField]))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("pref.label.api_key", comment: ""), controls: [imgbbKeyField]))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
         let imgbbNote = NSTextField(wrappingLabelWithString: "A shared key is included — get your own free key at imgbb.com/api if you hit rate limits. Images only (no video support).")
@@ -1188,7 +1188,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Upload History ──
-        stack.addArrangedSubview(sectionHeader("Upload History"))
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.section.upload_history", comment: "")))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         // Placeholder for upload history rows
@@ -1303,9 +1303,9 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
 
     private func updateGDriveButton() {
         if GoogleDriveUploader.shared.isSignedIn {
-            gdriveSignInBtn?.title = "Sign Out"
+            gdriveSignInBtn?.title = NSLocalizedString("pref.btn.sign_out", comment: "")
         } else {
-            gdriveSignInBtn?.title = "Sign In with Google"
+            gdriveSignInBtn?.title = NSLocalizedString("pref.btn.sign_in_google", comment: "")
         }
     }
 
