@@ -1,13 +1,12 @@
 import Cocoa
 import Carbon
-import Sparkle
 import UniformTypeIdentifiers
+import UserNotifications
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
-    private var updaterController: SPUStandardUpdaterController!
     private var overlayControllers: [OverlayWindowController] = []
     private var preferencesController: PreferencesWindowController?
     private var onboardingController: PermissionOnboardingController?
@@ -15,6 +14,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var thumbnailControllers: [FloatingThumbnailController] = []
     private var ocrController: OCRResultController?
     private var historyMenu: NSMenu?
+    private var regionsMenu: NSMenu?
     private var historyOverlayController: HistoryOverlayController?
     private var isCapturing = false
     private var delayCountdownWindow: NSWindow?
@@ -44,25 +44,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // Prevent multiple instances — if already running, activate the existing one and quit
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.sw33tlie.macshot.macshot"
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.hyunjoonkwak.screenshot"
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
         if running.count > 1 {
             // Tell the existing instance to show its icon and open Preferences
             DistributedNotificationCenter.default().postNotificationName(
-                .init("com.sw33tlie.macshot.showAndOpenPrefs"),
+                .init("com.hyunjoonkwak.screenshot.showAndOpenPrefs"),
                 object: nil, userInfo: nil, deliverImmediately: true
             )
             NSApp.terminate(nil)
             return
         }
 
-        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
         setupMainMenu()
         setupStatusBar()
         if UserDefaults.standard.bool(forKey: "hideMenuBarIcon") {
             setMenuBarIconVisible(false)
         }
         registerHotkey()
+        NotificationService.shared.requestPermission()
+        setupClipboardWatcher()
+        NSApp.servicesProvider = self
         // Pre-warm CoreAudio so the first capture sound doesn't stall ~1s.
         if let sound = Self.captureSound {
             sound.volume = 0
@@ -74,7 +76,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Listen for duplicate-launch notification to restore icon
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(handleShowAndOpenPrefs),
-            name: .init("com.sw33tlie.macshot.showAndOpenPrefs"), object: nil
+            name: .init("com.hyunjoonkwak.screenshot.showAndOpenPrefs"), object: nil
         )
 
         // Dismiss overlays when the user switches spaces
@@ -86,7 +88,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Pin from history panel
         NotificationCenter.default.addObserver(
             self, selector: #selector(pinFromHistory(_:)),
-            name: .init("macshot.pinFromHistory"), object: nil
+            name: .init("screenshot.pinFromHistory"), object: nil
+        )
+
+        // Shortcuts.app integration — listen for intent triggers
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(handleShortcutCapture(_:)),
+            name: .init("com.hyunjoonkwak.screenshot.captureArea"), object: nil
+        )
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(handleShortcutFullScreen(_:)),
+            name: .init("com.hyunjoonkwak.screenshot.captureFullScreen"), object: nil
+        )
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(handleShortcutOCR(_:)),
+            name: .init("com.hyunjoonkwak.screenshot.captureOCR"), object: nil
         )
 
         // Check screen recording permission. If not yet granted, show the
@@ -114,7 +130,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        // Re-launching macshot while it's running: show the menu bar icon and open Preferences
+        // Re-launching ScreenShot while it's running: show the menu bar icon and open Preferences
         if UserDefaults.standard.bool(forKey: "hideMenuBarIcon") {
             UserDefaults.standard.set(false, forKey: "hideMenuBarIcon")
             setMenuBarIconVisible(true)
@@ -143,9 +159,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(appMenuItem)
 
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About macshot", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: NSLocalizedString("menu.about", comment: ""), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(NSMenuItem.separator())
-        appMenu.addItem(withTitle: "Quit macshot", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: NSLocalizedString("menu.quit", comment: ""), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appMenuItem.submenu = appMenu
 
         NSApp.mainMenu = mainMenu
@@ -166,7 +182,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 img.size = NSSize(width: 22, height: 22)
                 button.image = img
             } else {
-                button.title = "macshot"
+                button.title = "ScreenShot"
             }
             // Use custom click handler so we can dismiss modals before showing the menu
             button.target = self
@@ -204,37 +220,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.autoenablesItems = false
 
-        let captureAreaItem = NSMenuItem(title: "Capture Area", action: #selector(captureScreen), keyEquivalent: "")
+        let captureAreaItem = NSMenuItem(title: NSLocalizedString("menu.capture_screen", comment: ""), action: #selector(captureScreen), keyEquivalent: "")
         captureAreaItem.target = self
         captureAreaItem.toolTip = HotkeyManager.displayString(for: .captureArea)
         captureAreaItem.image = NSImage(systemSymbolName: "crop", accessibilityDescription: nil)
         menu.addItem(captureAreaItem)
 
-        let captureFullItem = NSMenuItem(title: "Capture Screen", action: #selector(captureFullScreen), keyEquivalent: "")
+        let captureFullItem = NSMenuItem(title: NSLocalizedString("menu.capture_fullscreen", comment: ""), action: #selector(captureFullScreen), keyEquivalent: "")
         captureFullItem.target = self
         captureFullItem.toolTip = HotkeyManager.displayString(for: .captureFullScreen)
         captureFullItem.image = NSImage(systemSymbolName: "desktopcomputer", accessibilityDescription: nil)
         menu.addItem(captureFullItem)
 
-        let captureOCRItem = NSMenuItem(title: "Capture OCR", action: #selector(captureOCR), keyEquivalent: "")
+        let captureOCRItem = NSMenuItem(title: NSLocalizedString("menu.capture_ocr", comment: ""), action: #selector(captureOCR), keyEquivalent: "")
         captureOCRItem.target = self
         captureOCRItem.toolTip = HotkeyManager.displayString(for: .captureOCR)
         captureOCRItem.image = NSImage(systemSymbolName: "text.viewfinder", accessibilityDescription: nil)
         menu.addItem(captureOCRItem)
 
-        let quickCaptureItem = NSMenuItem(title: "Quick Capture", action: #selector(quickCapture), keyEquivalent: "")
+        let quickCaptureItem = NSMenuItem(title: NSLocalizedString("menu.quick_capture", comment: ""), action: #selector(quickCapture), keyEquivalent: "")
         quickCaptureItem.target = self
         quickCaptureItem.toolTip = HotkeyManager.displayString(for: .quickCapture)
         quickCaptureItem.image = NSImage(systemSymbolName: "square.and.arrow.down", accessibilityDescription: nil)
         menu.addItem(quickCaptureItem)
 
-        let scrollCaptureItem = NSMenuItem(title: "Scroll Capture", action: #selector(scrollCapture), keyEquivalent: "")
+        let scrollCaptureItem = NSMenuItem(title: NSLocalizedString("menu.scroll_capture", comment: ""), action: #selector(scrollCapture), keyEquivalent: "")
         scrollCaptureItem.target = self
         scrollCaptureItem.image = NSImage(systemSymbolName: "scroll", accessibilityDescription: nil)
         menu.addItem(scrollCaptureItem)
 
         // Capture Delay submenu
-        let delayItem = NSMenuItem(title: "Capture Delay", action: nil, keyEquivalent: "")
+        let delayItem = NSMenuItem(title: NSLocalizedString("menu.capture_delay", comment: ""), action: nil, keyEquivalent: "")
         delayItem.image = NSImage(systemSymbolName: "timer", accessibilityDescription: nil)
         let delaySubmenu = NSMenu()
         delaySubmenu.autoenablesItems = false
@@ -252,13 +268,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let recordAreaItem = NSMenuItem(title: "Record Area", action: #selector(recordArea), keyEquivalent: "")
+        let recordAreaItem = NSMenuItem(title: NSLocalizedString("menu.record_area", comment: ""), action: #selector(recordArea), keyEquivalent: "")
         recordAreaItem.target = self
         recordAreaItem.toolTip = HotkeyManager.displayString(for: .recordArea)
         recordAreaItem.image = NSImage(systemSymbolName: "record.circle", accessibilityDescription: nil)
         menu.addItem(recordAreaItem)
 
-        let recordScreenItem = NSMenuItem(title: "Record Screen", action: #selector(recordFullScreen), keyEquivalent: "")
+        let recordScreenItem = NSMenuItem(title: NSLocalizedString("menu.record_screen", comment: ""), action: #selector(recordFullScreen), keyEquivalent: "")
         recordScreenItem.target = self
         recordScreenItem.toolTip = HotkeyManager.displayString(for: .recordScreen)
         recordScreenItem.image = NSImage(systemSymbolName: "menubar.dock.rectangle", accessibilityDescription: nil)
@@ -267,7 +283,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         // Recent Captures submenu
-        let historyItem = NSMenuItem(title: "Recent Captures", action: nil, keyEquivalent: "")
+        let historyItem = NSMenuItem(title: NSLocalizedString("menu.recent_captures", comment: ""), action: nil, keyEquivalent: "")
         historyItem.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: nil)
         let historySubmenu = NSMenu()
         historySubmenu.delegate = self
@@ -275,7 +291,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         self.historyMenu = historySubmenu
         menu.addItem(historyItem)
 
-        let historyOverlayItem = NSMenuItem(title: "Show History Panel", action: #selector(showHistoryOverlay), keyEquivalent: "")
+        // Saved Regions submenu
+        let regionsItem = NSMenuItem(title: "Saved Regions", action: nil, keyEquivalent: "")
+        regionsItem.image = NSImage(systemSymbolName: "rectangle.dashed", accessibilityDescription: nil)
+        let regionsSubmenu = NSMenu()
+        regionsSubmenu.delegate = self
+        regionsItem.submenu = regionsSubmenu
+        self.regionsMenu = regionsSubmenu
+        menu.addItem(regionsItem)
+
+        let historyOverlayItem = NSMenuItem(title: NSLocalizedString("menu.show_history", comment: ""), action: #selector(showHistoryOverlay), keyEquivalent: "")
         historyOverlayItem.target = self
         historyOverlayItem.toolTip = HotkeyManager.displayString(for: .historyOverlay)
         historyOverlayItem.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: nil)
@@ -283,31 +308,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let openImageItem = NSMenuItem(title: "Open Image...", action: #selector(openImageFromMenu), keyEquivalent: "")
+        let openImageItem = NSMenuItem(title: NSLocalizedString("menu.open_image", comment: ""), action: #selector(openImageFromMenu), keyEquivalent: "")
         openImageItem.target = self
         openImageItem.image = NSImage(systemSymbolName: "photo.on.rectangle.angled", accessibilityDescription: nil)
         menu.addItem(openImageItem)
 
-        let pasteImageItem = NSMenuItem(title: "Open from Clipboard", action: #selector(openImageFromClipboard), keyEquivalent: "")
+        let pasteImageItem = NSMenuItem(title: NSLocalizedString("menu.open_clipboard", comment: ""), action: #selector(openImageFromClipboard), keyEquivalent: "")
         pasteImageItem.target = self
         pasteImageItem.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: nil)
         menu.addItem(pasteImageItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        let prefsItem = NSMenuItem(title: "Preferences...", action: #selector(openPreferences), keyEquivalent: ",")
+        let prefsItem = NSMenuItem(title: NSLocalizedString("menu.preferences", comment: ""), action: #selector(openPreferences), keyEquivalent: ",")
         prefsItem.target = self
         prefsItem.image = NSImage(systemSymbolName: "gear", accessibilityDescription: nil)
         menu.addItem(prefsItem)
 
-        let updateItem = NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "")
-        updateItem.target = self
-        updateItem.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil)
-        menu.addItem(updateItem)
-
         menu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(title: "Quit macshot", action: #selector(quitApp), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: NSLocalizedString("menu.quit", comment: ""), action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
 
@@ -343,6 +363,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             },
             quickCapture: { [weak self] in
                 DispatchQueue.main.async { self?.quickCapture() }
+            },
+            recaptureLastArea: { [weak self] in
+                DispatchQueue.main.async { self?.recaptureLastArea() }
             }
         )
     }
@@ -381,6 +404,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         historyOverlayController = controller
     }
 
+    @objc private func handleShortcutCapture(_ notification: Notification) {
+        captureScreen()
+    }
+    @objc private func handleShortcutFullScreen(_ notification: Notification) {
+        captureFullScreen()
+    }
+    @objc private func handleShortcutOCR(_ notification: Notification) {
+        captureOCR()
+    }
+
     @objc private func captureOCR() {
         pendingOCRMode = true
         startCapture(fromMenu: true)
@@ -389,6 +422,56 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func quickCapture() {
         pendingQuickCaptureMode = true
         startCapture(fromMenu: true)
+    }
+
+    /// Instantly re-capture the last selected area without showing the overlay.
+    private func recaptureLastArea() {
+        guard let rectStr = UserDefaults.standard.string(forKey: "lastSelectionRect"),
+              let screenStr = UserDefaults.standard.string(forKey: "lastSelectionScreenFrame") else {
+            // No saved area — fall back to normal capture
+            startCapture(fromMenu: true)
+            return
+        }
+        let savedRect = NSRectFromString(rectStr)
+        let savedScreenFrame = NSRectFromString(screenStr)
+        guard savedRect.width > 1, savedRect.height > 1 else {
+            startCapture(fromMenu: true)
+            return
+        }
+        guard let screen = NSScreen.screens.first(where: { $0.frame == savedScreenFrame }) else {
+            startCapture(fromMenu: true)
+            return
+        }
+
+        // Capture the screen directly
+        ScreenCaptureManager.captureAllScreens { [weak self] captures in
+            guard let self = self else { return }
+            guard let capture = captures.first(where: { $0.screen.frame == screen.frame }) else { return }
+
+            // Crop to the saved selection
+            let scale = screen.backingScaleFactor
+            let cropRect = CGRect(
+                x: savedRect.origin.x * scale,
+                y: (screen.frame.height - savedRect.origin.y - savedRect.height) * scale,
+                width: savedRect.width * scale,
+                height: savedRect.height * scale
+            )
+            guard let cropped = capture.image.cropping(to: cropRect) else { return }
+
+            let image = NSImage(cgImage: cropped, size: savedRect.size)
+
+            // Apply quick capture mode actions
+            let mode = UserDefaults.standard.object(forKey: "quickCaptureMode") as? Int ?? 1
+            if mode == 1 || mode == 2 {
+                ImageEncoder.copyToClipboard(image)
+            }
+            if mode == 0 || mode == 2 {
+                self.saveImageToFile(image, quickSave: true)
+            }
+            ScreenshotHistory.shared.add(image: image)
+            self.playCopySound()
+            self.showFloatingThumbnail(image: image)
+        }
     }
 
     @objc private func scrollCapture() {
@@ -759,11 +842,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Self.captureSound?.play()
     }
 
-    private func saveImageToFile(_ image: NSImage) {
+    private func saveImageToFile(_ image: NSImage, quickSave: Bool = false) {
         guard let imageData = ImageEncoder.encode(image) else { return }
+
+        // Quick Save: if a default directory is set, save immediately without dialog
+        if quickSave, let dir = SaveDirectoryAccess.directoryHint() {
+            let filename = "screenshot_\(OverlayWindowController.formattedTimestamp()).\(ImageEncoder.fileExtension)"
+            let url = dir.appendingPathComponent(filename)
+            do {
+                try imageData.write(to: url)
+                showQuickSaveToast(url: url)
+            } catch {
+                // Fall back to save dialog on error
+                showSavePanel(imageData: imageData)
+            }
+            return
+        }
+
+        showSavePanel(imageData: imageData)
+    }
+
+    private func showSavePanel(imageData: Data) {
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [ImageEncoder.utType]
-        savePanel.nameFieldStringValue = "macshot_\(OverlayWindowController.formattedTimestamp()).\(ImageEncoder.fileExtension)"
+        savePanel.nameFieldStringValue = "screenshot_\(OverlayWindowController.formattedTimestamp()).\(ImageEncoder.fileExtension)"
         savePanel.directoryURL = SaveDirectoryAccess.directoryHint()
         savePanel.begin { response in
             if response == .OK, let url = savePanel.url {
@@ -771,6 +873,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 SaveDirectoryAccess.save(url: url.deletingLastPathComponent())
             }
         }
+    }
+
+    private func showQuickSaveToast(url: URL) {
+        let toast = UploadToastController()
+        uploadToastController = toast
+        toast.showSuccess(link: url.lastPathComponent, deleteURL: "")
+        playCopySound()
     }
 
     // MARK: - Upload
@@ -812,7 +921,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        if provider == "gdrive" {
+        if provider == "webhook" && !WebhookUploader.shared.isConfigured {
+            toast.showError(message: "Webhook not configured — check Preferences")
+            return
+        }
+
+        if provider == "webhook" {
+            WebhookUploader.shared.onProgress = { fraction in
+                toast.updateProgress(fraction)
+            }
+            WebhookUploader.shared.uploadImage(image) { result in
+                switch result {
+                case .success(let link):
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(link, forType: .string)
+                    toast.showSuccess(link: link, deleteURL: "")
+                case .failure(let error):
+                    toast.showError(message: error.localizedDescription)
+                }
+            }
+        } else if provider == "gdrive" {
             GoogleDriveUploader.shared.uploadImage(image) { result in
                 switch result {
                 case .success(let link):
@@ -889,7 +1018,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
         panel.allowedContentTypes = [.png, .jpeg, .tiff, .bmp, .gif, .heic, .webP, .image]
-        panel.message = "Choose an image to open in macshot editor"
+        panel.message = NSLocalizedString("panel.choose_image", comment: "")
 
         NSApp.activate(ignoringOtherApps: true)
         panel.begin { response in
@@ -910,9 +1039,38 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "tiff", "tif", "bmp", "gif", "heic", "heif", "webp", "icns"]
         for url in urls {
+            // Handle screenshot:// URL scheme
+            if url.scheme == "screenshot" {
+                handleURLScheme(url)
+                continue
+            }
             let ext = url.pathExtension.lowercased()
             guard imageExtensions.contains(ext) else { continue }
             openImageFile(url: url)
+        }
+    }
+
+    private func handleURLScheme(_ url: URL) {
+        let action = url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        switch action {
+        case "capture", "area":
+            captureScreen()
+        case "fullscreen", "full":
+            captureFullScreen()
+        case "ocr", "text":
+            captureOCR()
+        case "quick":
+            quickCapture()
+        case "record":
+            recordArea()
+        case "history":
+            showHistoryOverlay()
+        case "preferences", "settings":
+            openPreferences()
+        case "recapture":
+            recaptureLastArea()
+        default:
+            captureScreen()
         }
     }
 
@@ -929,12 +1087,114 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         preferencesController?.showWindow()
     }
 
-    // MARK: - Quit
+    // MARK: - Clipboard Watcher
 
-    @objc private func checkForUpdates() {
-        NSApp.activate(ignoringOtherApps: true)
-        updaterController.checkForUpdates(nil)
+    private func setupClipboardWatcher() {
+        ClipboardWatcher.shared.onNewImage = { [weak self] image in
+            guard ClipboardWatcher.shared.isEnabled else { return }
+            // Show a notification offering to open the image in editor
+            let content = UNMutableNotificationContent()
+            content.title = "New image in clipboard"
+            content.body = "Click to open in ScreenShot editor"
+            content.sound = nil
+            content.categoryIdentifier = "clipboardImage"
+            let request = UNNotificationRequest(identifier: "clipboard-\(UUID().uuidString)", content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request)
+            // Store the image for when user clicks the notification
+            self?.clipboardWatchImage = image
+        }
+        ClipboardWatcher.shared.start()
     }
+
+    private var clipboardWatchImage: NSImage?
+
+    // MARK: - Saved Regions
+
+    private func buildRegionsMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let presets = RegionPresetManager.shared.presets
+        if presets.isEmpty {
+            let empty = NSMenuItem(title: "No saved regions", action: nil, keyEquivalent: "")
+            empty.isEnabled = false
+            menu.addItem(empty)
+        } else {
+            for (i, preset) in presets.enumerated() {
+                let w = Int(preset.rect.nsRect.width)
+                let h = Int(preset.rect.nsRect.height)
+                let title = "\(preset.name)  (\(w)×\(h))"
+                let item = NSMenuItem(title: title, action: #selector(loadRegionPreset(_:)), keyEquivalent: "")
+                item.target = self
+                item.tag = i
+                menu.addItem(item)
+            }
+            menu.addItem(NSMenuItem.separator())
+            let clearItem = NSMenuItem(title: "Clear All", action: #selector(clearAllRegionPresets), keyEquivalent: "")
+            clearItem.target = self
+            menu.addItem(clearItem)
+        }
+        menu.addItem(NSMenuItem.separator())
+        let saveItem = NSMenuItem(title: "Save Current Region...", action: #selector(saveCurrentRegion), keyEquivalent: "")
+        saveItem.target = self
+        menu.addItem(saveItem)
+    }
+
+    @objc private func loadRegionPreset(_ sender: NSMenuItem) {
+        let presets = RegionPresetManager.shared.presets
+        guard sender.tag >= 0, sender.tag < presets.count else { return }
+        let preset = presets[sender.tag]
+        UserDefaults.standard.set(NSStringFromRect(preset.rect.nsRect), forKey: "lastSelectionRect")
+        UserDefaults.standard.set(NSStringFromRect(preset.screenFrame.nsRect), forKey: "lastSelectionScreenFrame")
+        UserDefaults.standard.set(true, forKey: "rememberLastSelection")
+        startCapture(fromMenu: true)
+    }
+
+    @objc private func saveCurrentRegion() {
+        guard let rectStr = UserDefaults.standard.string(forKey: "lastSelectionRect"),
+              let screenStr = UserDefaults.standard.string(forKey: "lastSelectionScreenFrame") else {
+            let alert = NSAlert()
+            alert.messageText = "No region to save"
+            alert.informativeText = "Capture a region first, then save it as a preset."
+            alert.runModal()
+            return
+        }
+        let rect = NSRectFromString(rectStr)
+        let screenFrame = NSRectFromString(screenStr)
+        guard rect.width > 1, rect.height > 1 else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Save Region Preset"
+        alert.informativeText = "Enter a name for this \(Int(rect.width))×\(Int(rect.height)) region:"
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        input.stringValue = "Region \(RegionPresetManager.shared.presets.count + 1)"
+        alert.accessoryView = input
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let name = input.stringValue.isEmpty ? "Untitled" : input.stringValue
+            RegionPresetManager.shared.save(name: name, rect: rect, screenFrame: screenFrame)
+        }
+    }
+
+    @objc private func clearAllRegionPresets() {
+        RegionPresetManager.shared.deleteAll()
+    }
+
+    // MARK: - Services
+
+    /// Handle "Open in ScreenShot" from Finder Services menu.
+    @objc func openImageFromService(_ pboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+        guard let urls = pboard.readObjects(forClasses: [NSURL.self], options: [
+            .urlReadingFileURLsOnly: true,
+            .urlReadingContentsConformToTypes: ["public.image"],
+        ]) as? [URL] else { return }
+
+        for url in urls {
+            openImageFile(url: url)
+        }
+    }
+
+    // MARK: - Quit
 
     @objc private func quitApp() {
         NSApp.terminate(nil)
@@ -971,6 +1231,7 @@ extension AppDelegate: OverlayWindowControllerDelegate {
         if let image = capturedImage {
             ScreenshotHistory.shared.add(image: image)
             showFloatingThumbnail(image: image)
+            NotificationService.shared.notifyCaptured()
         }
     }
 
@@ -1156,6 +1417,7 @@ extension AppDelegate: OverlayWindowControllerDelegate {
 
     @objc private func stopRecording() {
         guard let engine = recordingEngine else { return }
+        recordingHUDPanel?.showEncoding()
         engine.stopRecording()
     }
 
@@ -1292,8 +1554,8 @@ extension AppDelegate: OverlayWindowControllerDelegate {
                 let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
                 AXIsProcessTrustedWithOptions(opts)
                 let alert = NSAlert()
-                alert.messageText = "Accessibility Access Required"
-                alert.informativeText = "macshot needs Accessibility permission to auto-scroll other apps. Please grant access in System Settings, then try again."
+                alert.messageText = NSLocalizedString("alert.accessibility_required", comment: "")
+                alert.informativeText = NSLocalizedString("alert.accessibility_body", comment: "")
                 alert.alertStyle = .warning
                 alert.addButton(withTitle: "Open Settings")
                 alert.addButton(withTitle: "Cancel")
@@ -1401,7 +1663,7 @@ extension AppDelegate: OverlayWindowControllerDelegate {
             ImageEncoder.copyToClipboard(image)
         }
         if mode == 0 || mode == 2 {
-            saveImageToFile(image)
+            saveImageToFile(image, quickSave: true)
         }
         playCopySound()
         showFloatingThumbnail(image: image)
@@ -1490,6 +1752,10 @@ extension AppDelegate: PinWindowControllerDelegate {
 
 extension AppDelegate: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu == regionsMenu {
+            buildRegionsMenu(menu)
+            return
+        }
         // Only rebuild the history submenu, not the main status bar menu
         guard menu == historyMenu else { return }
 

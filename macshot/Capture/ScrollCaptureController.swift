@@ -64,7 +64,7 @@ final class ScrollCaptureController {
     private let backingScale: CGFloat
 
     // Dedicated serial queue for capture-and-compare (off main thread)
-    private let captureQueue = DispatchQueue(label: "macshot.scrollcapture", qos: .userInitiated)
+    private let captureQueue = DispatchQueue(label: "screenshot.scrollcapture", qos: .userInitiated)
 
     // Frame state
     private var shotA: CGImage?          // previous frame

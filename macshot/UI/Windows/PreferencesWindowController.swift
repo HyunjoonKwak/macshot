@@ -13,7 +13,7 @@ private class PreferencesWindow: NSWindow {
     }
 }
 
-class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWindowDelegate {
+class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWindowDelegate, NSTextFieldDelegate {
 
     private var hotkeyFields: [HotkeyManager.HotkeySlot: NSTextField] = [:]
     private var hotkeyButtons: [HotkeyManager.HotkeySlot: NSButton] = [:]
@@ -44,6 +44,18 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
     private var qualityRowLabel: NSTextField!
     private var downscaleRetinaCheckbox: NSButton!
     private var embedColorProfileCheckbox: NSButton!
+    private var stripMetadataCheckbox: NSButton!
+    private var maxDimensionField: NSTextField!
+    private var addShadowCheckbox: NSButton!
+    private var watermarkTextField: NSTextField!
+    private var watermarkOpacitySlider: NSSlider!
+    private var watermarkOpacityLabel: NSTextField!
+    private var timestampCheckbox: NSButton!
+    private var timestampFormatField: NSTextField!
+    private var aspectRatioPopup: NSPopUpButton!
+    private var clipboardWatchCheckbox: NSButton!
+    private var autoSaveOnCopyCheckbox: NSButton!
+    private var notificationCheckbox: NSButton!
     private var imgbbKeyField: NSTextField!
     private var localMonitor: Any?
     private weak var uploadsStack: NSStackView?
@@ -60,6 +72,11 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
     private var s3PathPrefixField: NSTextField!
     private var s3TestBtn: NSButton!
     private var s3StatusLabel: NSTextField!
+    // Webhook controls
+    private var webhookURLField: NSTextField!
+    private var webhookFieldNameField: NSTextField!
+    private var webhookHeadersField: NSTextField!
+    private var webhookResponsePathField: NSTextField!
     // Recording tab controls
     private var recordingFormatPopup: NSPopUpButton!
     private var recordingFPSPopup: NSPopUpButton!
@@ -81,7 +98,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
             backing: .buffered,
             defer: false
         )
-        window.title = "macshot Preferences"
+        window.title = NSLocalizedString("window.preferences", comment: "")
         window.center()
         window.isReleasedWhenClosed = false
         super.init(window: window)
@@ -144,16 +161,16 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         sep.translatesAutoresizingMaskIntoConstraints = false
 
         // Footer labels
-        let madeBy = NSTextField(labelWithString: "Made by sw33tLie")
+        let madeBy = NSTextField(labelWithString: "Based on macshot by sw33tLie")
         madeBy.font = NSFont.systemFont(ofSize: 11)
         madeBy.textColor = .secondaryLabelColor
         madeBy.translatesAutoresizingMaskIntoConstraints = false
 
-        let linkBtn = NSButton(title: "github.com/sw33tLie/macshot", target: self, action: #selector(openGitHub))
+        let linkBtn = NSButton(title: "github.com/HyunjoonKwak/macshot", target: self, action: #selector(openGitHub))
         linkBtn.bezelStyle = .inline
         linkBtn.isBordered = false
         linkBtn.font = NSFont.systemFont(ofSize: 11)
-        linkBtn.attributedTitle = NSAttributedString(string: "github.com/sw33tLie/macshot", attributes: [
+        linkBtn.attributedTitle = NSAttributedString(string: "github.com/HyunjoonKwak/macshot", attributes: [
             .font: NSFont.systemFont(ofSize: 11),
             .foregroundColor: NSColor.linkColor,
             .underlineStyle: NSUnderlineStyle.single.rawValue,
@@ -249,6 +266,8 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         snapGuidesCheckbox = NSButton(checkboxWithTitle: "Show snap alignment guides", target: self, action: #selector(snapGuidesChanged(_:)))
         captureCursorCheckbox = NSButton(checkboxWithTitle: "Capture mouse cursor in screenshot", target: self, action: #selector(captureCursorChanged(_:)))
         windowTitleCheckbox = NSButton(checkboxWithTitle: "Use window title in saved filename", target: self, action: #selector(windowTitleChanged(_:)))
+        autoSaveOnCopyCheckbox = NSButton(checkboxWithTitle: "Auto-save file when copying to clipboard", target: self, action: #selector(autoSaveOnCopyChanged(_:)))
+        notificationCheckbox = NSButton(checkboxWithTitle: "Show notification after capture", target: self, action: #selector(notificationChanged(_:)))
 
         for cb in [copySoundCheckbox!, rememberSelectionCheckbox!, rememberToolCheckbox!, thumbnailCheckbox!] {
             stack.addArrangedSubview(indented(cb))
@@ -294,6 +313,29 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.addArrangedSubview(indented(windowTitleCheckbox))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
+        aspectRatioPopup = NSPopUpButton()
+        aspectRatioPopup.addItems(withTitles: ["1:1 (Square)", "4:3", "16:9", "3:2"])
+        aspectRatioPopup.selectItem(at: UserDefaults.standard.integer(forKey: "captureAspectRatio"))
+        aspectRatioPopup.target = self
+        aspectRatioPopup.action = #selector(aspectRatioChanged(_:))
+        stack.addArrangedSubview(labeledRow("Shift-drag ratio:", controls: [aspectRatioPopup]))
+        stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
+
+        stack.addArrangedSubview(indented(autoSaveOnCopyCheckbox))
+        stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
+
+        stack.addArrangedSubview(indented(notificationCheckbox))
+        stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
+
+        clipboardWatchCheckbox = NSButton(checkboxWithTitle: "Watch clipboard for new images", target: self, action: #selector(clipboardWatchChanged(_:)))
+        stack.addArrangedSubview(indented(clipboardWatchCheckbox))
+        stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
+        let autoSaveNote = NSTextField(labelWithString: "Saves a copy to default folder whenever you copy a screenshot")
+        autoSaveNote.font = NSFont.systemFont(ofSize: 10)
+        autoSaveNote.textColor = .tertiaryLabelColor
+        stack.addArrangedSubview(indented(autoSaveNote))
+        stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
+
         stack.addArrangedSubview(indented(launchAtLoginCheckbox))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
@@ -301,7 +343,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.addArrangedSubview(indented(hideMenuBarIconCheckbox))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
-        let hideNote = NSTextField(wrappingLabelWithString: "Hotkeys still work. To show the icon again, re-launch macshot.")
+        let hideNote = NSTextField(wrappingLabelWithString: NSLocalizedString("pref.hide_menubar_note", comment: ""))
         hideNote.font = NSFont.systemFont(ofSize: 10)
         hideNote.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(hideNote))
@@ -385,6 +427,98 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         profileNote.font = NSFont.systemFont(ofSize: 10)
         profileNote.textColor = .tertiaryLabelColor
         stack.addArrangedSubview(indented(profileNote))
+        stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
+
+        // Strip metadata
+        stripMetadataCheckbox = NSButton(checkboxWithTitle: "Strip EXIF/metadata from saved images", target: self, action: #selector(stripMetadataChanged(_:)))
+        stack.addArrangedSubview(indented(stripMetadataCheckbox))
+        stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
+
+        let metadataNote = NSTextField(labelWithString: "Removes GPS, camera info, and other metadata for privacy")
+        metadataNote.font = NSFont.systemFont(ofSize: 10)
+        metadataNote.textColor = .tertiaryLabelColor
+        stack.addArrangedSubview(indented(metadataNote))
+        stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
+
+        // Drop shadow
+        addShadowCheckbox = NSButton(checkboxWithTitle: "Add drop shadow to saved images", target: self, action: #selector(addShadowChanged(_:)))
+        stack.addArrangedSubview(indented(addShadowCheckbox))
+        stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
+
+        let shadowNote = NSTextField(labelWithString: "Adds a subtle shadow around the screenshot for presentations")
+        shadowNote.font = NSFont.systemFont(ofSize: 10)
+        shadowNote.textColor = .tertiaryLabelColor
+        stack.addArrangedSubview(indented(shadowNote))
+        stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
+
+        // Max image dimension
+        maxDimensionField = NSTextField()
+        maxDimensionField.placeholderString = "0 (no limit)"
+        maxDimensionField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        maxDimensionField.widthAnchor.constraint(equalToConstant: 80).isActive = true
+        let savedMax = UserDefaults.standard.integer(forKey: "maxImageDimension")
+        maxDimensionField.stringValue = savedMax > 0 ? "\(savedMax)" : ""
+        maxDimensionField.target = self
+        maxDimensionField.action = #selector(maxDimensionChanged(_:))
+        stack.addArrangedSubview(labeledRow("Max dimension (px):", controls: [maxDimensionField]))
+        stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
+
+        let maxDimNote = NSTextField(labelWithString: "Resize if width or height exceeds this. 0 or empty = no limit.")
+        maxDimNote.font = NSFont.systemFont(ofSize: 10)
+        maxDimNote.textColor = .tertiaryLabelColor
+        stack.addArrangedSubview(indented(maxDimNote))
+        stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
+
+        // Watermark
+        stack.addArrangedSubview(sectionHeader("Watermark"))
+        stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
+
+        watermarkTextField = NSTextField()
+        watermarkTextField.placeholderString = "Empty = disabled"
+        watermarkTextField.font = NSFont.systemFont(ofSize: 12)
+        watermarkTextField.stringValue = UserDefaults.standard.string(forKey: "watermarkText") ?? ""
+        watermarkTextField.target = self
+        watermarkTextField.action = #selector(watermarkTextChanged(_:))
+        stack.addArrangedSubview(labeledRow("Text:", controls: [watermarkTextField]))
+        stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
+
+        watermarkOpacitySlider = NSSlider(value: (UserDefaults.standard.object(forKey: "watermarkOpacity") as? Double ?? 0.3) * 100,
+                                          minValue: 5, maxValue: 100, target: self, action: #selector(watermarkOpacityChanged(_:)))
+        watermarkOpacitySlider.widthAnchor.constraint(equalToConstant: 120).isActive = true
+        watermarkOpacityLabel = NSTextField(labelWithString: "\(Int(watermarkOpacitySlider.doubleValue))%")
+        watermarkOpacityLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        watermarkOpacityLabel.widthAnchor.constraint(equalToConstant: 36).isActive = true
+        stack.addArrangedSubview(labeledRow("Opacity:", controls: [watermarkOpacitySlider, watermarkOpacityLabel]))
+        stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
+
+        let wmNote = NSTextField(labelWithString: "Displayed in the bottom-right corner of saved images")
+        wmNote.font = NSFont.systemFont(ofSize: 10)
+        wmNote.textColor = .tertiaryLabelColor
+        stack.addArrangedSubview(indented(wmNote))
+        stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
+
+        // Timestamp overlay
+        stack.addArrangedSubview(sectionHeader("Timestamp Overlay"))
+        stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
+
+        timestampCheckbox = NSButton(checkboxWithTitle: "Add capture timestamp to saved images", target: self, action: #selector(timestampChanged(_:)))
+        timestampCheckbox.state = UserDefaults.standard.bool(forKey: "addTimestampOverlay") ? .on : .off
+        stack.addArrangedSubview(indented(timestampCheckbox))
+        stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
+
+        timestampFormatField = NSTextField()
+        timestampFormatField.placeholderString = "yyyy-MM-dd HH:mm:ss"
+        timestampFormatField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        timestampFormatField.stringValue = UserDefaults.standard.string(forKey: "timestampFormat") ?? "yyyy-MM-dd HH:mm:ss"
+        timestampFormatField.target = self
+        timestampFormatField.action = #selector(timestampFormatChanged(_:))
+        stack.addArrangedSubview(labeledRow(NSLocalizedString("timestamp.format_label", comment: ""), controls: [timestampFormatField]))
+        stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
+
+        let tsNote = NSTextField(labelWithString: "Shown in top-left corner. Uses DateFormatter syntax (e.g. yyyy-MM-dd HH:mm)")
+        tsNote.font = NSFont.systemFont(ofSize: 10)
+        tsNote.textColor = .tertiaryLabelColor
+        stack.addArrangedSubview(indented(tsNote))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         // History size
@@ -656,6 +790,54 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         let rightActionsGrid = makeToggleGrid(items: rightActionItems,
                                               defaultsKey: "enabledActions", enabledValues: enabledActions)
         stack.addArrangedSubview(rightActionsGrid)
+        stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
+
+        // ── Tool Shortcuts ──────────────────────────────────
+        stack.addArrangedSubview(sectionHeader(NSLocalizedString("pref.tool_shortcuts", comment: "")))
+        stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
+
+        let shortcutNote = NSTextField(labelWithString: NSLocalizedString("pref.tool_shortcuts_note", comment: ""))
+        shortcutNote.font = NSFont.systemFont(ofSize: 11)
+        shortcutNote.textColor = .secondaryLabelColor
+        stack.addArrangedSubview(shortcutNote)
+        stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
+
+        let shortcutItems: [(action: ToolbarButtonAction, label: String)] = [
+            (.tool(.pencil), "Pencil"), (.tool(.arrow), "Arrow"), (.tool(.line), "Line"),
+            (.tool(.rectangle), "Rectangle"), (.tool(.text), "Text"), (.tool(.marker), "Marker"),
+            (.tool(.number), "Number"), (.tool(.pixelate), "Censor"),
+            (.tool(.colorSampler), "Color Picker"), (.tool(.select), "Select"),
+            (.tool(.stamp), "Stamp"), (.detach, "Open in Editor"),
+        ]
+
+        let shortcutGrid = NSGridView()
+        shortcutGrid.translatesAutoresizingMaskIntoConstraints = false
+        shortcutGrid.rowSpacing = 6
+        shortcutGrid.columnSpacing = 12
+
+        for item in shortcutItems {
+            let label = NSTextField(labelWithString: item.label)
+            label.font = NSFont.systemFont(ofSize: 12)
+
+            let field = NSTextField()
+            field.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
+            field.alignment = .center
+            field.placeholderString = "–"
+            field.stringValue = ToolShortcutManager.shared.key(for: item.action)?.uppercased() ?? ""
+            field.widthAnchor.constraint(equalToConstant: 36).isActive = true
+            field.identifier = NSUserInterfaceItemIdentifier("shortcut_\(shortcutActionID(item.action))")
+            field.delegate = self
+            field.tag = shortcutItems.firstIndex(where: { shortcutActionID($0.action) == shortcutActionID(item.action) }) ?? 0
+
+            shortcutGrid.addRow(with: [label, field])
+        }
+
+        stack.addArrangedSubview(shortcutGrid)
+        stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
+
+        let resetShortcutsBtn = NSButton(title: NSLocalizedString("pref.reset_shortcuts", comment: ""), target: self, action: #selector(resetToolShortcuts(_:)))
+        resetShortcutsBtn.bezelStyle = .rounded
+        stack.addArrangedSubview(indented(resetShortcutsBtn))
 
         let clipView = scroll.contentView
         scroll.documentView = stack
@@ -811,11 +993,12 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         providerPopup = NSPopUpButton()
-        providerPopup.addItems(withTitles: ["imgbb (images only)", "Google Drive (images + videos)", "S3-Compatible (images + videos)"])
+        providerPopup.addItems(withTitles: ["imgbb (images only)", "Google Drive (images + videos)", "S3-Compatible (images + videos)", "Webhook (custom HTTP POST)"])
         let currentProvider = UserDefaults.standard.string(forKey: "uploadProvider") ?? "imgbb"
         switch currentProvider {
         case "gdrive": providerPopup.selectItem(at: 1)
         case "s3": providerPopup.selectItem(at: 2)
+        case "webhook": providerPopup.selectItem(at: 3)
         default: providerPopup.selectItem(at: 0)
         }
         providerPopup.target = self
@@ -840,7 +1023,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.addArrangedSubview(indented(gdriveSignInBtn))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
-        let gdriveNote = NSTextField(wrappingLabelWithString: "Files are uploaded to a \"macshot\" folder in your Google Drive. Everything stays private — nothing is shared publicly.")
+        let gdriveNote = NSTextField(wrappingLabelWithString: NSLocalizedString("pref.gdrive_note", comment: ""))
         gdriveNote.font = NSFont.systemFont(ofSize: 10)
         gdriveNote.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(gdriveNote))
@@ -933,6 +1116,55 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.addArrangedSubview(indented(s3Note))
         stack.setCustomSpacing(16, after: stack.arrangedSubviews.last!)
 
+        // ── Webhook ──
+        stack.addArrangedSubview(sectionHeader("Webhook (Custom HTTP POST)"))
+        stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
+
+        webhookURLField = NSTextField()
+        webhookURLField.placeholderString = "https://api.example.com/upload"
+        webhookURLField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        webhookURLField.stringValue = UserDefaults.standard.string(forKey: "webhookURL") ?? ""
+        webhookURLField.target = self
+        webhookURLField.action = #selector(webhookFieldChanged(_:))
+        stack.addArrangedSubview(labeledRow("URL:", controls: [webhookURLField]))
+
+        webhookFieldNameField = NSTextField()
+        webhookFieldNameField.placeholderString = "file"
+        webhookFieldNameField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        webhookFieldNameField.stringValue = UserDefaults.standard.string(forKey: "webhookFieldName") ?? "file"
+        webhookFieldNameField.target = self
+        webhookFieldNameField.action = #selector(webhookFieldChanged(_:))
+        stack.addArrangedSubview(labeledRow("Field Name:", controls: [webhookFieldNameField]))
+
+        webhookHeadersField = NSTextField()
+        webhookHeadersField.placeholderString = "Authorization: Bearer token123"
+        webhookHeadersField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        webhookHeadersField.stringValue = UserDefaults.standard.string(forKey: "webhookHeaders") ?? ""
+        webhookHeadersField.target = self
+        webhookHeadersField.action = #selector(webhookFieldChanged(_:))
+        stack.addArrangedSubview(labeledRow("Headers:", controls: [webhookHeadersField]))
+        stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
+
+        let headerNote = NSTextField(wrappingLabelWithString: "One header per line: \"Key: Value\" format.")
+        headerNote.font = NSFont.systemFont(ofSize: 10)
+        headerNote.textColor = .secondaryLabelColor
+        stack.addArrangedSubview(indented(headerNote))
+
+        webhookResponsePathField = NSTextField()
+        webhookResponsePathField.placeholderString = "data.url"
+        webhookResponsePathField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        webhookResponsePathField.stringValue = UserDefaults.standard.string(forKey: "webhookResponseURLPath") ?? "url"
+        webhookResponsePathField.target = self
+        webhookResponsePathField.action = #selector(webhookFieldChanged(_:))
+        stack.addArrangedSubview(labeledRow("Response URL Path:", controls: [webhookResponsePathField]))
+        stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
+
+        let responseNote = NSTextField(wrappingLabelWithString: "Dot-separated JSON key path to extract the uploaded file URL from the response (e.g. \"data.url\", \"link\").")
+        responseNote.font = NSFont.systemFont(ofSize: 10)
+        responseNote.textColor = .secondaryLabelColor
+        stack.addArrangedSubview(indented(responseNote))
+        stack.setCustomSpacing(16, after: stack.arrangedSubviews.last!)
+
         // ── imgbb ──
         stack.addArrangedSubview(sectionHeader("imgbb"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
@@ -1009,7 +1241,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(12, after: icon)
 
         // App name
-        let name = NSTextField(labelWithString: "macshot")
+        let name = NSTextField(labelWithString: "ScreenShot")
         name.font = NSFont.systemFont(ofSize: 22, weight: .bold)
         name.textColor = .labelColor
         stack.addArrangedSubview(name)
@@ -1032,17 +1264,17 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         stack.setCustomSpacing(20, after: desc)
 
         // Author
-        let author = NSTextField(labelWithString: "Made by sw33tLie")
+        let author = NSTextField(labelWithString: "Based on macshot by sw33tLie")
         author.font = NSFont.systemFont(ofSize: 12, weight: .medium)
         author.textColor = .secondaryLabelColor
         stack.addArrangedSubview(author)
         stack.setCustomSpacing(6, after: author)
 
         // GitHub link
-        let ghBtn = NSButton(title: "github.com/sw33tLie/macshot", target: self, action: #selector(openGitHub))
+        let ghBtn = NSButton(title: "github.com/HyunjoonKwak/macshot", target: self, action: #selector(openGitHub))
         ghBtn.bezelStyle = .inline
         ghBtn.isBordered = false
-        ghBtn.attributedTitle = NSAttributedString(string: "github.com/sw33tLie/macshot", attributes: [
+        ghBtn.attributedTitle = NSAttributedString(string: "github.com/HyunjoonKwak/macshot", attributes: [
             .font: NSFont.systemFont(ofSize: 12),
             .foregroundColor: NSColor.linkColor,
             .underlineStyle: NSUnderlineStyle.single.rawValue,
@@ -1082,6 +1314,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         switch sender.indexOfSelectedItem {
         case 1: provider = "gdrive"
         case 2: provider = "s3"
+        case 3: provider = "webhook"
         default: provider = "imgbb"
         }
         UserDefaults.standard.set(provider, forKey: "uploadProvider")
@@ -1134,8 +1367,8 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         s3StatusLabel.textColor = .secondaryLabelColor
 
         // Upload a tiny test file
-        let testData = Data("macshot connection test".utf8)
-        let testKey = ".macshot_test_\(UUID().uuidString.prefix(8)).txt"
+        let testData = Data("screenshot connection test".utf8)
+        let testKey = ".screenshot_test_\(UUID().uuidString.prefix(8)).txt"
         S3Uploader.shared.upload(data: testData, filename: testKey, contentType: "text/plain") { [weak self] result in
             guard let self = self else { return }
             self.s3TestBtn.isEnabled = true
@@ -1377,6 +1610,9 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         copySoundCheckbox.state = copySound ? .on : .off
 
         rememberSelectionCheckbox.state = UserDefaults.standard.bool(forKey: "rememberLastSelection") ? .on : .off
+        autoSaveOnCopyCheckbox.state = UserDefaults.standard.bool(forKey: "autoSaveOnCopy") ? .on : .off
+        notificationCheckbox.state = UserDefaults.standard.bool(forKey: "showCaptureNotification") ? .on : .off
+        clipboardWatchCheckbox.state = UserDefaults.standard.bool(forKey: "clipboardWatchEnabled") ? .on : .off
 
         let rememberTool = UserDefaults.standard.object(forKey: "rememberLastTool") as? Bool ?? true
         rememberToolCheckbox.state = rememberTool ? .on : .off
@@ -1439,6 +1675,8 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
 
         downscaleRetinaCheckbox.state = ImageEncoder.downscaleRetina ? .on : .off
         embedColorProfileCheckbox.state = ImageEncoder.embedColorProfile ? .on : .off
+        stripMetadataCheckbox.state = ImageEncoder.stripMetadata ? .on : .off
+        addShadowCheckbox.state = ImageEncoder.addShadow ? .on : .off
 
         updateQualityVisibility()
 
@@ -1519,7 +1757,7 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         UserDefaults.standard.set(sender.indexOfSelectedItem, forKey: "quickCaptureMode")
     }
     @objc private func openGitHub() {
-        if let url = URL(string: "https://github.com/sw33tLie/macshot") { NSWorkspace.shared.open(url) }
+        if let url = URL(string: "https://github.com/HyunjoonKwak/macshot") { NSWorkspace.shared.open(url) }
     }
     @objc private func imageFormatChanged(_ sender: NSPopUpButton) {
         let formats = ["png", "jpeg", "heic", "webp"]
@@ -1536,10 +1774,63 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
     @objc private func embedColorProfileChanged(_ sender: NSButton) {
         UserDefaults.standard.set(sender.state == .on, forKey: "embedColorProfile")
     }
+    @objc private func stripMetadataChanged(_ sender: NSButton) {
+        UserDefaults.standard.set(sender.state == .on, forKey: "stripImageMetadata")
+    }
+    @objc private func clipboardWatchChanged(_ sender: NSButton) {
+        UserDefaults.standard.set(sender.state == .on, forKey: "clipboardWatchEnabled")
+        if sender.state == .on {
+            ClipboardWatcher.shared.start()
+        } else {
+            ClipboardWatcher.shared.stop()
+        }
+    }
+    @objc private func aspectRatioChanged(_ sender: NSPopUpButton) {
+        UserDefaults.standard.set(sender.indexOfSelectedItem, forKey: "captureAspectRatio")
+    }
+    @objc private func timestampChanged(_ sender: NSButton) {
+        UserDefaults.standard.set(sender.state == .on, forKey: "addTimestampOverlay")
+    }
+    @objc private func timestampFormatChanged(_ sender: NSTextField) {
+        UserDefaults.standard.set(sender.stringValue, forKey: "timestampFormat")
+    }
+    @objc private func watermarkTextChanged(_ sender: NSTextField) {
+        UserDefaults.standard.set(sender.stringValue, forKey: "watermarkText")
+    }
+    @objc private func watermarkOpacityChanged(_ sender: NSSlider) {
+        let val = sender.doubleValue / 100.0
+        UserDefaults.standard.set(val, forKey: "watermarkOpacity")
+        watermarkOpacityLabel.stringValue = "\(Int(sender.doubleValue))%"
+    }
+    @objc private func addShadowChanged(_ sender: NSButton) {
+        UserDefaults.standard.set(sender.state == .on, forKey: "addImageShadow")
+    }
+    @objc private func notificationChanged(_ sender: NSButton) {
+        UserDefaults.standard.set(sender.state == .on, forKey: "showCaptureNotification")
+    }
+    @objc private func autoSaveOnCopyChanged(_ sender: NSButton) {
+        UserDefaults.standard.set(sender.state == .on, forKey: "autoSaveOnCopy")
+    }
+    @objc private func maxDimensionChanged(_ sender: NSTextField) {
+        let val = max(0, sender.integerValue)
+        UserDefaults.standard.set(val, forKey: "maxImageDimension")
+        sender.stringValue = val > 0 ? "\(val)" : ""
+    }
     @objc private func imgbbKeyChanged(_ sender: NSTextField) {
         let key = sender.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         if key.isEmpty { UserDefaults.standard.removeObject(forKey: "imgbbAPIKey") }
         else { UserDefaults.standard.set(key, forKey: "imgbbAPIKey") }
+    }
+    @objc private func webhookFieldChanged(_ sender: NSTextField) {
+        if sender === webhookURLField {
+            UserDefaults.standard.set(sender.stringValue, forKey: "webhookURL")
+        } else if sender === webhookFieldNameField {
+            UserDefaults.standard.set(sender.stringValue, forKey: "webhookFieldName")
+        } else if sender === webhookHeadersField {
+            UserDefaults.standard.set(sender.stringValue, forKey: "webhookHeaders")
+        } else if sender === webhookResponsePathField {
+            UserDefaults.standard.set(sender.stringValue, forKey: "webhookResponseURLPath")
+        }
     }
     @objc private func historySizeChanged(_ sender: NSStepper) {
         historySizeField.integerValue = sender.integerValue
@@ -1704,6 +1995,64 @@ class PreferencesWindowController: NSWindowController, NSTabViewDelegate, NSWind
         let hasOtherWindows = NSApp.windows.contains { $0 !== window && $0.isVisible && $0.styleMask.contains(.titled) }
         if !hasOtherWindows {
             NSApp.setActivationPolicy(.accessory)
+        }
+    }
+
+    // MARK: - Tool Shortcut Actions
+
+    private let shortcutActions: [ToolbarButtonAction] = [
+        .tool(.pencil), .tool(.arrow), .tool(.line),
+        .tool(.rectangle), .tool(.text), .tool(.marker),
+        .tool(.number), .tool(.pixelate),
+        .tool(.colorSampler), .tool(.select),
+        .tool(.stamp), .detach,
+    ]
+
+    private func shortcutActionID(_ action: ToolbarButtonAction) -> String {
+        switch action {
+        case .tool(let tool): return "tool.\(tool)"
+        case .detach: return "detach"
+        default: return "unknown"
+        }
+    }
+
+    @objc private func resetToolShortcuts(_ sender: NSButton) {
+        ToolShortcutManager.shared.resetToDefaults()
+        // Update all shortcut text fields
+        guard let scrollView = (window?.contentView as? NSTabView)?.tabViewItem(at: 1).view as? NSScrollView,
+              let stack = scrollView.documentView else { return }
+        for view in stack.subviews {
+            guard let grid = view as? NSGridView else { continue }
+            for row in 0..<grid.numberOfRows {
+                guard let field = grid.cell(atColumnIndex: 1, rowIndex: row).contentView as? NSTextField,
+                      let id = field.identifier?.rawValue, id.hasPrefix("shortcut_") else { continue }
+                let actionID = String(id.dropFirst(9))
+                if let action = shortcutActions.first(where: { shortcutActionID($0) == actionID }) {
+                    field.stringValue = ToolShortcutManager.shared.key(for: action)?.uppercased() ?? ""
+                }
+            }
+            break
+        }
+    }
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+        guard let field = obj.object as? NSTextField,
+              let id = field.identifier?.rawValue, id.hasPrefix("shortcut_") else { return }
+        let actionID = String(id.dropFirst(9))
+        guard let action = shortcutActions.first(where: { shortcutActionID($0) == actionID }) else { return }
+
+        let newKey = field.stringValue.lowercased().trimmingCharacters(in: .whitespaces)
+
+        // Remove old binding for this action
+        if let oldKey = ToolShortcutManager.shared.key(for: action) {
+            ToolShortcutManager.shared.setBinding(key: oldKey, action: nil)
+        }
+
+        if newKey.count == 1 && newKey.first!.isLetter {
+            ToolShortcutManager.shared.setBinding(key: newKey, action: action)
+            field.stringValue = newKey.uppercased()
+        } else {
+            field.stringValue = ""
         }
     }
 }

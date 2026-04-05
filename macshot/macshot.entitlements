@@ -12,10 +12,5 @@
 	<true/>
 	<key>com.apple.security.device.audio-input</key>
 	<true/>
-	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
-	<array>
-		<string>com.sw33tlie.macshot.macshot-spks</string>
-		<string>com.sw33tlie.macshot.macshot-spki</string>
-	</array>
 </dict>
 </plist>

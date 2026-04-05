@@ -53,7 +53,7 @@ final class VideoEditorWindowController: NSObject, NSWindowDelegate {
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false
         )
-        win.title = "macshot Video Editor"
+        win.title = NSLocalizedString("window.video_editor", comment: "")
         win.minSize = NSSize(width: 600, height: 400)
         win.isReleasedWhenClosed = false
         win.delegate = self
@@ -850,7 +850,7 @@ private final class VideoEditorView: NSView {
             uploadFileURL(videoURL, false)
         } else {
             guard let asset = asset else { return }
-            let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("macshot_upload_\(UUID().uuidString).mp4")
+            let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("screenshot_upload_\(UUID().uuidString).mp4")
 
             let timeRange = CMTimeRange(start: CMTime(seconds: trimStart, preferredTimescale: 600),
                                         end: CMTime(seconds: trimEnd, preferredTimescale: 600))

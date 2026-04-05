@@ -296,6 +296,15 @@ extension OverlayWindowController: OverlayViewDelegate {
         // Copy button / Cmd+C always copies to clipboard
         ImageEncoder.copyToClipboard(finalImage)
 
+        // Auto-save on confirm if enabled
+        if UserDefaults.standard.bool(forKey: "autoSaveOnCopy") {
+            if let dir = SaveDirectoryAccess.directoryHint(),
+               let data = ImageEncoder.encode(finalImage) {
+                let filename = "screenshot_\(Self.formattedTimestamp()).\(ImageEncoder.fileExtension)"
+                try? data.write(to: dir.appendingPathComponent(filename))
+            }
+        }
+
         overlayDelegate?.overlayDidConfirm(self, capturedImage: finalImage)
     }
 
@@ -358,7 +367,7 @@ extension OverlayWindowController: OverlayViewDelegate {
         guard let imageData = ImageEncoder.encode(image) else { return }
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent(
-                "macshot_\(Self.formattedTimestamp()).\(ImageEncoder.fileExtension)")
+                "screenshot_\(Self.formattedTimestamp()).\(ImageEncoder.fileExtension)")
         try? imageData.write(to: tempURL)
 
         // Get the screen position of the share button
@@ -535,7 +544,7 @@ extension OverlayWindowController: OverlayViewDelegate {
             do {
                 try handler.perform([request])
                 guard let result = request.results?.first else {
-                    throw NSError(domain: "Macshot", code: 1)
+                    throw NSError(domain: "ScreenShot", code: 1)
                 }
 
                 let maskPixelBuffer = try result.generateScaledMaskForImage(
@@ -546,7 +555,7 @@ extension OverlayWindowController: OverlayViewDelegate {
 
                 // Blend original with mask
                 guard let filter = CIFilter(name: "CIBlendWithMask") else {
-                    throw NSError(domain: "Macshot", code: 2)
+                    throw NSError(domain: "ScreenShot", code: 2)
                 }
                 filter.setValue(originalCIImage, forKey: kCIInputImageKey)
                 filter.setValue(maskCIImage, forKey: kCIInputMaskImageKey)
@@ -555,14 +564,14 @@ extension OverlayWindowController: OverlayViewDelegate {
                     forKey: kCIInputBackgroundImageKey)
 
                 guard let outputCIImage = filter.outputImage else {
-                    throw NSError(domain: "Macshot", code: 3)
+                    throw NSError(domain: "ScreenShot", code: 3)
                 }
 
                 let context = CIContext()
                 guard
                     let finalCGImage = context.createCGImage(
                         outputCIImage, from: outputCIImage.extent)
-                else { throw NSError(domain: "Macshot", code: 4) }
+                else { throw NSError(domain: "ScreenShot", code: 4) }
 
                 let finalNSImage = NSImage(cgImage: finalCGImage, size: image.size)
 
@@ -687,7 +696,7 @@ extension OverlayWindowController: OverlayViewDelegate {
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [ImageEncoder.utType]
         savePanel.nameFieldStringValue =
-            "macshot_\(Self.formattedTimestamp()).\(ImageEncoder.fileExtension)"
+            "screenshot_\(Self.formattedTimestamp()).\(ImageEncoder.fileExtension)"
         savePanel.level = NSWindow.Level(258)
 
         savePanel.directoryURL = SaveDirectoryAccess.directoryHint()

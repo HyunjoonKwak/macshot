@@ -7,6 +7,7 @@ class EditorTopBarView: NSView {
     weak var overlayView: OverlayView?
     private var sizeLabel: NSTextField!
     private var zoomButton: NSButton!
+    private var pinOnTopBtn: NSButton!
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -21,7 +22,11 @@ class EditorTopBarView: NSView {
         let cropBtn = makeButton("crop", tooltip: "Crop", action: #selector(cropClicked))
         let flipHBtn = makeButton("arrow.left.and.right.righttriangle.left.righttriangle.right", tooltip: "Flip Horizontal", action: #selector(flipHClicked))
         let flipVBtn = makeButton("arrow.up.and.down.righttriangle.up.righttriangle.down", tooltip: "Flip Vertical", action: #selector(flipVClicked))
+        let rotateCWBtn = makeButton("rotate.right", tooltip: "Rotate 90° CW", action: #selector(rotateCWClicked))
+        let rotateCCWBtn = makeButton("rotate.left", tooltip: "Rotate 90° CCW", action: #selector(rotateCCWClicked))
         let addCaptureBtn = makeButton("rectangle.badge.plus", tooltip: "Add Capture", action: #selector(addCaptureClicked))
+
+        pinOnTopBtn = makeButton("pin", tooltip: "Always on Top", action: #selector(pinOnTopClicked))
 
         // Zoom dropdown button
         zoomButton = NSButton()
@@ -41,7 +46,7 @@ class EditorTopBarView: NSView {
         addSubview(border)
 
         // Layout with constraints
-        for v: NSView in [sizeLabel, cropBtn, flipHBtn, flipVBtn, addCaptureBtn, zoomButton] {
+        for v: NSView in [sizeLabel, cropBtn, flipHBtn, flipVBtn, rotateCWBtn, rotateCCWBtn, addCaptureBtn, pinOnTopBtn, zoomButton] {
             v.translatesAutoresizingMaskIntoConstraints = false
             addSubview(v)
         }
@@ -67,10 +72,25 @@ class EditorTopBarView: NSView {
             flipVBtn.widthAnchor.constraint(equalToConstant: 24),
             flipVBtn.heightAnchor.constraint(equalToConstant: 22),
 
-            addCaptureBtn.leadingAnchor.constraint(equalTo: flipVBtn.trailingAnchor, constant: 12),
+            rotateCWBtn.leadingAnchor.constraint(equalTo: flipVBtn.trailingAnchor, constant: 8),
+            rotateCWBtn.centerYAnchor.constraint(equalTo: centerYAnchor),
+            rotateCWBtn.widthAnchor.constraint(equalToConstant: 24),
+            rotateCWBtn.heightAnchor.constraint(equalToConstant: 22),
+
+            rotateCCWBtn.leadingAnchor.constraint(equalTo: rotateCWBtn.trailingAnchor, constant: 4),
+            rotateCCWBtn.centerYAnchor.constraint(equalTo: centerYAnchor),
+            rotateCCWBtn.widthAnchor.constraint(equalToConstant: 24),
+            rotateCCWBtn.heightAnchor.constraint(equalToConstant: 22),
+
+            addCaptureBtn.leadingAnchor.constraint(equalTo: rotateCCWBtn.trailingAnchor, constant: 12),
             addCaptureBtn.centerYAnchor.constraint(equalTo: centerYAnchor),
             addCaptureBtn.widthAnchor.constraint(equalToConstant: 24),
             addCaptureBtn.heightAnchor.constraint(equalToConstant: 22),
+
+            pinOnTopBtn.trailingAnchor.constraint(equalTo: zoomButton.leadingAnchor, constant: -8),
+            pinOnTopBtn.centerYAnchor.constraint(equalTo: centerYAnchor),
+            pinOnTopBtn.widthAnchor.constraint(equalToConstant: 24),
+            pinOnTopBtn.heightAnchor.constraint(equalToConstant: 22),
 
             zoomButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
             zoomButton.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -198,6 +218,18 @@ class EditorTopBarView: NSView {
         ov.needsDisplay = true
     }
 
+    @objc private func pinOnTopClicked() {
+        guard let win = window else { return }
+        let isFloating = win.level == .floating
+        win.level = isFloating ? .normal : .floating
+        pinOnTopBtn.contentTintColor = isFloating
+            ? NSColor.white.withAlphaComponent(0.85)
+            : NSColor.systemYellow
+        pinOnTopBtn.toolTip = isFloating ? "Always on Top" : "Normal Window Level"
+    }
+
+    @objc private func rotateCWClicked() { overlayView?.rotateImage90(clockwise: true) }
+    @objc private func rotateCCWClicked() { overlayView?.rotateImage90(clockwise: false) }
     @objc private func flipHClicked() { overlayView?.flipImageHorizontally() }
     @objc private func flipVClicked() { overlayView?.flipImageVertically() }
     @objc private func addCaptureClicked() { overlayView?.overlayDelegate?.overlayViewDidRequestAddCapture() }

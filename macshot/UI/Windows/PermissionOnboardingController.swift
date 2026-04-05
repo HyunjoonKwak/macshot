@@ -21,7 +21,7 @@ class PermissionOnboardingController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "Welcome to macshot"
+        window.title = NSLocalizedString("window.welcome", comment: "")
         window.center()
         window.isReleasedWhenClosed = false
         window.titlebarAppearsTransparent = false
@@ -57,7 +57,7 @@ class PermissionOnboardingController: NSWindowController {
         cv.addSubview(logoView)
 
         // Title
-        let title = NSTextField(labelWithString: "macshot needs one permission")
+        let title = NSTextField(labelWithString: NSLocalizedString("onboarding.needs_permission", comment: ""))
         title.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
         title.textColor = .labelColor
         title.alignment = .center
@@ -260,7 +260,7 @@ class PermissionOnboardingController: NSWindowController {
             NSWorkspace.shared.open(url)
         }
 
-        statusLabel?.stringValue = "Enable macshot, then try taking a screenshot"
+        statusLabel?.stringValue = NSLocalizedString("onboarding.enable_then_try", comment: "")
     }
 
     @objc private func continueClicked() {

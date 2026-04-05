@@ -40,6 +40,134 @@ enum ImageEncoder {
         return val ?? true  // on by default
     }
 
+    /// Whether to strip EXIF/metadata from saved images for privacy.
+    static var stripMetadata: Bool {
+        UserDefaults.standard.bool(forKey: "stripImageMetadata")
+    }
+
+    /// Maximum pixel dimension (width or height). 0 means no limit.
+    static var maxDimension: Int {
+        UserDefaults.standard.integer(forKey: "maxImageDimension")
+    }
+
+    /// Whether to add a drop shadow around saved images.
+    static var addShadow: Bool {
+        UserDefaults.standard.bool(forKey: "addImageShadow")
+    }
+
+    /// Watermark text (empty = disabled).
+    static var watermarkText: String {
+        UserDefaults.standard.string(forKey: "watermarkText") ?? ""
+    }
+
+    /// Watermark opacity 0.0–1.0.
+    static var watermarkOpacity: CGFloat {
+        let val = UserDefaults.standard.object(forKey: "watermarkOpacity") as? Double ?? 0.3
+        return CGFloat(max(0.05, min(1.0, val)))
+    }
+
+    /// Whether to add a timestamp overlay on saved images.
+    static var addTimestamp: Bool {
+        UserDefaults.standard.bool(forKey: "addTimestampOverlay")
+    }
+
+    /// Timestamp format string (DateFormatter).
+    static var timestampFormat: String {
+        UserDefaults.standard.string(forKey: "timestampFormat") ?? "yyyy-MM-dd HH:mm:ss"
+    }
+
+    /// Apply timestamp overlay to top-left corner.
+    static func applyTimestamp(to image: NSImage) -> NSImage {
+        let formatter = DateFormatter()
+        formatter.dateFormat = timestampFormat
+        let text = formatter.string(from: Date())
+
+        let result = NSImage(size: image.size)
+        result.lockFocus()
+        image.draw(in: NSRect(origin: .zero, size: image.size), from: .zero, operation: .sourceOver, fraction: 1.0)
+
+        let fontSize = max(10, min(18, image.size.width / 50))
+        let bgAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .medium),
+            .foregroundColor: NSColor.black.withAlphaComponent(0.5),
+        ]
+        let fgAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .medium),
+            .foregroundColor: NSColor.white.withAlphaComponent(0.7),
+        ]
+        let textSize = (text as NSString).size(withAttributes: fgAttrs)
+        let margin: CGFloat = 8
+        let bgRect = NSRect(x: margin - 4, y: image.size.height - textSize.height - margin - 2,
+                            width: textSize.width + 8, height: textSize.height + 4)
+        NSColor.black.withAlphaComponent(0.4).setFill()
+        NSBezierPath(roundedRect: bgRect, xRadius: 3, yRadius: 3).fill()
+
+        let point = NSPoint(x: margin, y: image.size.height - textSize.height - margin)
+        (text as NSString).draw(at: NSPoint(x: point.x + 0.5, y: point.y - 0.5), withAttributes: bgAttrs)
+        (text as NSString).draw(at: point, withAttributes: fgAttrs)
+
+        result.unlockFocus()
+        return result
+    }
+
+    /// Apply text watermark to bottom-right corner.
+    static func applyWatermark(to image: NSImage) -> NSImage {
+        let text = watermarkText
+        guard !text.isEmpty else { return image }
+
+        let result = NSImage(size: image.size)
+        result.lockFocus()
+        image.draw(in: NSRect(origin: .zero, size: image.size), from: .zero, operation: .sourceOver, fraction: 1.0)
+
+        let fontSize = max(12, min(24, image.size.width / 40))
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: fontSize, weight: .medium),
+            .foregroundColor: NSColor.white.withAlphaComponent(watermarkOpacity),
+        ]
+        let textSize = (text as NSString).size(withAttributes: attrs)
+        let margin: CGFloat = 12
+        let point = NSPoint(
+            x: image.size.width - textSize.width - margin,
+            y: margin
+        )
+
+        // Draw text shadow for readability
+        let shadowAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: fontSize, weight: .medium),
+            .foregroundColor: NSColor.black.withAlphaComponent(watermarkOpacity * 0.5),
+        ]
+        (text as NSString).draw(at: NSPoint(x: point.x + 1, y: point.y - 1), withAttributes: shadowAttrs)
+        (text as NSString).draw(at: point, withAttributes: attrs)
+
+        result.unlockFocus()
+        return result
+    }
+
+    /// Add drop shadow around an NSImage.
+    static func applyDropShadow(to image: NSImage) -> NSImage {
+        let shadowRadius: CGFloat = 20
+        let shadowOffset: CGFloat = 8
+        let padding = shadowRadius + shadowOffset
+        let newSize = NSSize(
+            width: image.size.width + padding * 2,
+            height: image.size.height + padding * 2
+        )
+        let result = NSImage(size: newSize)
+        result.lockFocus()
+        let ctx = NSGraphicsContext.current!.cgContext
+        ctx.setShadow(
+            offset: CGSize(width: 0, height: -shadowOffset),
+            blur: shadowRadius,
+            color: NSColor.black.withAlphaComponent(0.4).cgColor
+        )
+        image.draw(
+            in: NSRect(x: padding, y: padding, width: image.size.width, height: image.size.height),
+            from: .zero, operation: .sourceOver, fraction: 1.0
+        )
+        result.unlockFocus()
+        return result
+    }
+
     static var fileExtension: String {
         switch format {
         case .png: return "png"
@@ -91,6 +219,30 @@ enum ImageEncoder {
             }
         }
 
+        // Apply max dimension limit if configured
+        let maxDim = maxDimension
+        if maxDim > 0 {
+            let pw = bitmap.pixelsWide
+            let ph = bitmap.pixelsHigh
+            if pw > maxDim || ph > maxDim {
+                let scale = CGFloat(maxDim) / CGFloat(max(pw, ph))
+                let newW = Int(CGFloat(pw) * scale)
+                let newH = Int(CGFloat(ph) * scale)
+                guard let cgImage = bitmap.cgImage else { return bitmap }
+                let cs = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+                guard let ctx = CGContext(
+                    data: nil, width: newW, height: newH,
+                    bitsPerComponent: 8, bytesPerRow: newW * 4,
+                    space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                ) else { return bitmap }
+                ctx.interpolationQuality = .high
+                ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: newW, height: newH))
+                if let resized = ctx.makeImage() {
+                    return NSBitmapImageRep(cgImage: resized)
+                }
+            }
+        }
+
         return bitmap
     }
 
@@ -98,7 +250,10 @@ enum ImageEncoder {
 
     /// Encode an NSImage to Data in the configured format.
     static func encode(_ image: NSImage) -> Data? {
-        guard let bitmap = makeBitmap(image) else { return nil }
+        var processedImage = addTimestamp ? applyTimestamp(to: image) : image
+        processedImage = !watermarkText.isEmpty ? applyWatermark(to: processedImage) : processedImage
+        processedImage = addShadow ? applyDropShadow(to: processedImage) : processedImage
+        guard let bitmap = makeBitmap(processedImage) else { return nil }
 
         switch format {
         case .png:
@@ -164,6 +319,15 @@ enum ImageEncoder {
         var properties: [String: Any] = [:]
         if let q = lossyQuality {
             properties[kCGImageDestinationLossyCompressionQuality as String] = q
+        }
+
+        // Strip EXIF/metadata for privacy if enabled
+        if stripMetadata {
+            properties[kCGImagePropertyExifDictionary as String] = kCFNull
+            properties[kCGImagePropertyGPSDictionary as String] = kCFNull
+            properties[kCGImagePropertyIPTCDictionary as String] = kCFNull
+            properties[kCGImagePropertyMakerAppleDictionary as String] = kCFNull
+            properties[kCGImagePropertyTIFFDictionary as String] = kCFNull
         }
 
         // Embed sRGB color profile by converting the image's color space

@@ -1,0 +1,335 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "menu.capture_screen" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Capture Screen" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 캡처" } }
+      }
+    },
+    "menu.capture_fullscreen" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Capture Full Screen" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체 화면 캡처" } }
+      }
+    },
+    "menu.record_area" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Record Area" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "영역 녹화" } }
+      }
+    },
+    "menu.record_screen" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Record Full Screen" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체 화면 녹화" } }
+      }
+    },
+    "menu.open_image" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Image..." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이미지 열기..." } }
+      }
+    },
+    "menu.paste_image" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Paste Image" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이미지 붙여넣기" } }
+      }
+    },
+    "menu.recent_captures" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recent Captures" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최근 캡처" } }
+      }
+    },
+    "menu.preferences" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preferences..." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "환경설정..." } }
+      }
+    },
+    "menu.quit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit ScreenShot" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot 종료" } }
+      }
+    },
+    "menu.about" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "About ScreenShot" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot 정보" } }
+      }
+    },
+    "window.preferences" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot Preferences" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot 환경설정" } }
+      }
+    },
+    "window.editor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot Editor" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot 편집기" } }
+      }
+    },
+    "window.video_editor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot Video Editor" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot 비디오 편집기" } }
+      }
+    },
+    "window.welcome" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Welcome to ScreenShot" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot에 오신 것을 환영합니다" } }
+      }
+    },
+    "onboarding.needs_permission" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot needs one permission" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot에 하나의 권한이 필요합니다" } }
+      }
+    },
+    "onboarding.enable_then_try" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enable ScreenShot, then try taking a screenshot" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot을 활성화한 후 스크린샷을 찍어보세요" } }
+      }
+    },
+    "onboarding.open_settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open System Settings" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 설정 열기" } }
+      }
+    },
+    "onboarding.continue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "계속" } }
+      }
+    },
+    "alert.accessibility_required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Accessibility Access Required" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "접근성 권한 필요" } }
+      }
+    },
+    "alert.accessibility_body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot needs Accessibility permission to auto-scroll other apps. Please grant access in System Settings, then try again." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot이 다른 앱을 자동 스크롤하려면 접근성 권한이 필요합니다. 시스템 설정에서 권한을 부여한 후 다시 시도해주세요." } }
+      }
+    },
+    "alert.mic_required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Microphone Access Required" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "마이크 접근 권한 필요" } }
+      }
+    },
+    "alert.mic_body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot needs microphone permission to record voice audio. Open System Settings to grant access." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot이 음성을 녹음하려면 마이크 권한이 필요합니다. 시스템 설정에서 권한을 부여해주세요." } }
+      }
+    },
+    "alert.open_settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "설정 열기" } }
+      }
+    },
+    "alert.cancel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "취소" } }
+      }
+    },
+    "panel.choose_image" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose an image to open in ScreenShot editor" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot 편집기에서 열 이미지를 선택하세요" } }
+      }
+    },
+    "pref.general" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "General" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일반" } }
+      }
+    },
+    "pref.tools" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tools" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "도구" } }
+      }
+    },
+    "pref.recording" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "녹화" } }
+      }
+    },
+    "pref.upload" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Upload" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "업로드" } }
+      }
+    },
+    "pref.about" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "About" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정보" } }
+      }
+    },
+    "pref.hide_menubar_note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hotkeys still work. To show the icon again, re-launch ScreenShot." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "단축키는 계속 작동합니다. 아이콘을 다시 표시하려면 ScreenShot을 재실행하세요." } }
+      }
+    },
+    "pref.tool_shortcuts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tool Shortcuts" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "도구 단축키" } }
+      }
+    },
+    "pref.tool_shortcuts_note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Single-key shortcuts for switching tools. Type one letter per field." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "도구 전환용 단일 키 단축키. 각 필드에 한 글자를 입력하세요." } }
+      }
+    },
+    "pref.reset_shortcuts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reset to Defaults" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기본값으로 초기화" } }
+      }
+    },
+    "pref.gdrive_note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Files are uploaded to a \"ScreenShot\" folder in your Google Drive. Everything stays private — nothing is shared publicly." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일은 Google Drive의 \"ScreenShot\" 폴더에 업로드됩니다. 모든 파일은 비공개로 유지됩니다." } }
+      }
+    },
+    "perm.screen_capture" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot needs screen recording permission to capture screenshots." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot이 스크린샷을 캡처하려면 화면 기록 권한이 필요합니다." } }
+      }
+    },
+    "perm.microphone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot can record microphone audio during screen recordings." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "ScreenShot은 화면 녹화 중 마이크 오디오를 녹음할 수 있습니다." } }
+      }
+    },
+    "menu.capture_ocr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Capture OCR" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "OCR 캡처" } }
+      }
+    },
+    "menu.quick_capture" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quick Capture" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "빠른 캡처" } }
+      }
+    },
+    "menu.scroll_capture" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scroll Capture" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "스크롤 캡처" } }
+      }
+    },
+    "menu.capture_delay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Capture Delay" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "캡처 지연" } }
+      }
+    },
+    "menu.show_history" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show History Panel" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "히스토리 패널 표시" } }
+      }
+    },
+    "menu.open_clipboard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open from Clipboard" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "클립보드에서 열기" } }
+      }
+    },
+    "notify.captured" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Screenshot captured" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "스크린샷이 캡처되었습니다" } }
+      }
+    },
+    "notify.copied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copied to clipboard" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "클립보드에 복사되었습니다" } }
+      }
+    },
+    "notify.saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved to file" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일로 저장되었습니다" } }
+      }
+    },
+    "timestamp.format_label" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Timestamp Format:" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "타임스탬프 형식:" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

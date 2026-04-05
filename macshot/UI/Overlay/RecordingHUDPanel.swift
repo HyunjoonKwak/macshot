@@ -57,6 +57,35 @@ class RecordingHUDPanel: NSPanel {
         setFrame(f, display: true)
     }
 
+    /// Show encoding/processing state with pulsing animation.
+    func showEncoding() {
+        timeLabel.stringValue = "⏳ Encoding..."
+        timeLabel.sizeToFit()
+
+        let pillW = timeLabel.frame.width + 24
+        let pillH: CGFloat = 28
+        timeLabel.frame.origin = NSPoint(x: 12, y: (pillH - timeLabel.frame.height) / 2)
+        contentView?.frame.size = NSSize(width: pillW, height: pillH)
+
+        var f = frame
+        let oldMidX = f.midX
+        f.size = NSSize(width: pillW, height: pillH)
+        f.origin.x = oldMidX - pillW / 2
+        setFrame(f, display: true)
+
+        // Change to amber color
+        (contentView as? NSView)?.layer?.backgroundColor = NSColor(red: 0.85, green: 0.55, blue: 0.1, alpha: 0.92).cgColor
+
+        // Pulse animation
+        let pulse = CABasicAnimation(keyPath: "opacity")
+        pulse.fromValue = 1.0
+        pulse.toValue = 0.5
+        pulse.duration = 0.8
+        pulse.autoreverses = true
+        pulse.repeatCount = .infinity
+        contentView?.layer?.add(pulse, forKey: "encodingPulse")
+    }
+
     /// Position relative to an overlay window's selection rect.
     func position(relativeTo selectionRect: NSRect, in overlayWindow: NSWindow) {
         let selScreen = overlayWindow.convertToScreen(selectionRect)

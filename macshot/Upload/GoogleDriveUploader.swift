@@ -4,13 +4,14 @@ import CryptoKit
 import AuthenticationServices
 
 /// Google Drive uploader using OAuth2 with PKCE.
-/// Files are uploaded to a "macshot" folder in the user's Drive, kept private (not shared).
+/// Files are uploaded to a "ScreenShot" folder in the user's Drive, kept private (not shared).
 final class GoogleDriveUploader: NSObject, ASWebAuthenticationPresentationContextProviding {
 
     static let shared = GoogleDriveUploader()
 
     // GCP OAuth iOS client — no secret needed for native apps using PKCE
-    private let clientID = "92758256085-8gkpg2b9to7bu7to0vgh9c7af755hp5d.apps.googleusercontent.com"
+    // TODO: Replace with your own GCP OAuth client ID
+    private let clientID = ""
     /// Reversed client ID used as custom URL scheme for OAuth redirect.
     private var callbackScheme: String {
         clientID.components(separatedBy: ".").reversed().joined(separator: ".")
@@ -264,7 +265,7 @@ final class GoogleDriveUploader: NSObject, ASWebAuthenticationPresentationContex
         guard let token = loadAccessToken() else { completion(nil); return }
 
         // Search for existing macshot folder
-        let query = "name='macshot' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        let query = "name='ScreenShot' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         var searchURL = URLComponents(string: filesURL)!
         searchURL.queryItems = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "fields", value: "files(id)")]
 
@@ -295,7 +296,7 @@ final class GoogleDriveUploader: NSObject, ASWebAuthenticationPresentationContex
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let metadata: [String: Any] = [
-            "name": "macshot",
+            "name": "ScreenShot",
             "mimeType": "application/vnd.google-apps.folder",
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: metadata)
@@ -344,7 +345,7 @@ final class GoogleDriveUploader: NSObject, ASWebAuthenticationPresentationContex
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
 
         // Write body to temp file for uploadTask (enables progress tracking)
-        let tmpFile = FileManager.default.temporaryDirectory.appendingPathComponent("macshot_upload_\(UUID().uuidString).tmp")
+        let tmpFile = FileManager.default.temporaryDirectory.appendingPathComponent("screenshot_upload_\(UUID().uuidString).tmp")
         try? body.write(to: tmpFile)
 
         let maxRetries = 3
@@ -435,7 +436,7 @@ final class GoogleDriveUploader: NSObject, ASWebAuthenticationPresentationContex
 
     private var tokenFileURL: URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = appSupport.appendingPathComponent("com.sw33tlie.macshot")
+        let dir = appSupport.appendingPathComponent("com.hyunjoonkwak.screenshot")
         if !FileManager.default.fileExists(atPath: dir.path) {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true,
                                                       attributes: [.posixPermissions: 0o700])

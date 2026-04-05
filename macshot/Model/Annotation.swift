@@ -175,6 +175,8 @@ class Annotation {
     var isUnderline: Bool = false
     var isStrikethrough: Bool = false
     var rotation: CGFloat = 0         // rotation angle in radians
+    var isLocked: Bool = false         // locked annotations cannot be moved, modified, or deleted
+    var opacity: CGFloat = 1.0         // individual annotation opacity (0.0–1.0)
 
     var supportsRotation: Bool {
         switch tool {
@@ -255,6 +257,8 @@ class Annotation {
         c.textOutlineColor = textOutlineColor
         c.textAlignment = textAlignment
         c.fontFamilyName = fontFamilyName
+        c.isLocked = isLocked
+        c.opacity = opacity
         return c
     }
 
@@ -481,8 +485,27 @@ class Annotation {
         path.lineWidth = 1.5
         let pattern: [CGFloat] = [4, 4]
         path.setLineDash(pattern, count: 2, phase: 0)
-        ToolbarLayout.accentColor.withAlphaComponent(0.6).setStroke()
+        let highlightColor = isLocked ? NSColor.systemOrange : ToolbarLayout.accentColor
+        highlightColor.withAlphaComponent(0.6).setStroke()
         path.stroke()
+
+        // Draw lock icon for locked annotations
+        if isLocked {
+            let iconSize: CGFloat = 14
+            let iconRect = NSRect(
+                x: padded.maxX - iconSize - 2,
+                y: padded.maxY - iconSize - 2,
+                width: iconSize, height: iconSize
+            )
+            if let lockImage = NSImage(systemSymbolName: "lock.fill", accessibilityDescription: "Locked") {
+                let tinted = lockImage.copy() as! NSImage
+                tinted.lockFocus()
+                NSColor.systemOrange.set()
+                NSRect(origin: .zero, size: tinted.size).fill(using: .sourceAtop)
+                tinted.unlockFocus()
+                tinted.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 0.9)
+            }
+        }
     }
 
     // MARK: - Geometry helpers
@@ -568,6 +591,13 @@ class Annotation {
     func draw(in context: NSGraphicsContext) {
         NSGraphicsContext.current = context
 
+        // Apply per-annotation opacity
+        if opacity < 1.0 {
+            context.cgContext.saveGState()
+            context.cgContext.setAlpha(opacity)
+            context.cgContext.beginTransparencyLayer(auxiliaryInfo: nil)
+        }
+
         // Apply rotation around annotation center
         if rotation != 0 && supportsRotation {
             let center = NSPoint(x: boundingRect.midX, y: boundingRect.midY)
@@ -621,6 +651,12 @@ class Annotation {
         }
 
         if rotation != 0 && supportsRotation {
+            context.cgContext.restoreGState()
+        }
+
+        // Close per-annotation opacity layer
+        if opacity < 1.0 {
+            context.cgContext.endTransparencyLayer()
             context.cgContext.restoreGState()
         }
     }

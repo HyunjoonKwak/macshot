@@ -55,7 +55,7 @@ class DetachedEditorWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        win.title = "macshot Editor"
+        win.title = NSLocalizedString("window.editor", comment: "")
         win.minSize = NSSize(width: minW, height: minH)
         win.maxSize = NSSize(width: screenFrame.width, height: screenFrame.height)
         win.isReleasedWhenClosed = false
@@ -198,7 +198,7 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
         guard let imageData = ImageEncoder.encode(image) else { return }
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [ImageEncoder.utType]
-        savePanel.nameFieldStringValue = "macshot_\(OverlayWindowController.formattedTimestamp()).\(ImageEncoder.fileExtension)"
+        savePanel.nameFieldStringValue = "screenshot_\(OverlayWindowController.formattedTimestamp()).\(ImageEncoder.fileExtension)"
         savePanel.directoryURL = SaveDirectoryAccess.directoryHint()
         savePanel.beginSheetModal(for: window!) { response in
             if response == .OK, let url = savePanel.url {
@@ -264,7 +264,7 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
         let image = applyPostProcessing(raw)
         guard let imageData = ImageEncoder.encode(image) else { return }
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("macshot_\(OverlayWindowController.formattedTimestamp()).\(ImageEncoder.fileExtension)")
+            .appendingPathComponent("screenshot_\(OverlayWindowController.formattedTimestamp()).\(ImageEncoder.fileExtension)")
         try? imageData.write(to: tempURL)
 
         let picker = NSSharingServicePicker(items: [tempURL])

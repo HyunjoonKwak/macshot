@@ -468,6 +468,44 @@ class OverlayView: NSView {
     var scrollCaptureMaxHeight: Int = 0
     var scrollCaptureAutoScrolling: Bool = false
     private var scrollCaptureHUDPanel: ScrollCaptureHUDPanel?
+    private var shortcutHelpPanel: ShortcutHelpPanel?
+    /// When true, the next Delete/Backspace removes all annotations at once.
+    var selectAllPending = false
+
+    /// Additional selected annotations for multi-select (Shift+click).
+    /// The primary `selectedAnnotation` is always the "lead" selection.
+    private var multiSelectedAnnotations: [Annotation] = []
+
+    /// All selected annotations (primary + multi).
+    var allSelectedAnnotations: [Annotation] {
+        var result: [Annotation] = []
+        if let primary = selectedAnnotation { result.append(primary) }
+        result.append(contentsOf: multiSelectedAnnotations.filter { $0 !== selectedAnnotation })
+        return result
+    }
+
+    /// Aspect ratio for Shift-constrained selection. Set via Preferences.
+    /// Default 1:1 (square). Options: 1:1, 4:3, 16:9, 3:2
+    static var aspectRatio: NSSize {
+        let idx = UserDefaults.standard.integer(forKey: "captureAspectRatio")
+        switch idx {
+        case 1: return NSSize(width: 4, height: 3)
+        case 2: return NSSize(width: 16, height: 9)
+        case 3: return NSSize(width: 3, height: 2)
+        default: return NSSize(width: 1, height: 1)
+        }
+    }
+
+    private func toggleShortcutHelp() {
+        if let panel = shortcutHelpPanel {
+            panel.close()
+            shortcutHelpPanel = nil
+        } else if let screen = window?.screen {
+            let panel = ShortcutHelpPanel(screen: screen)
+            panel.orderFront(nil)
+            shortcutHelpPanel = panel
+        }
+    }
     private var scrollCaptureKeyMonitor: Any?
     private var scrollCaptureLocalKeyMonitor: Any?
     /// Activate the app visible under the selection rect so the user doesn't need a warmup click.
@@ -2462,6 +2500,79 @@ class OverlayView: NSView {
         needsDisplay = true
     }
 
+    /// Rotate image 90° clockwise (editor only). Pass `false` for counter-clockwise.
+    func rotateImage90(clockwise: Bool = true) {
+        guard isEditorMode else { return }
+        guard let original = screenshotImage,
+              let cgImage = original.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+
+        let prevImage = original.copy() as! NSImage
+        undoStack.append(.imageTransform(previousImage: prevImage, annotationOffsets: []))
+        redoStack.removeAll()
+
+        let w = cgImage.width
+        let h = cgImage.height
+        let cs = cgImage.colorSpace ?? CGColorSpaceCreateDeviceRGB()
+
+        // Rotated dimensions are swapped
+        guard let ctx = CGContext(
+            data: nil, width: h, height: w,
+            bitsPerComponent: cgImage.bitsPerComponent,
+            bytesPerRow: 0, space: cs,
+            bitmapInfo: cgImage.bitmapInfo.rawValue
+        ) else { return }
+
+        if clockwise {
+            ctx.translateBy(x: CGFloat(h), y: 0)
+            ctx.rotate(by: .pi / 2)
+        } else {
+            ctx.translateBy(x: 0, y: CGFloat(w))
+            ctx.rotate(by: -.pi / 2)
+        }
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let rotated = ctx.makeImage() else { return }
+
+        let newSize = NSSize(width: original.size.height, height: original.size.width)
+        screenshotImage = NSImage(cgImage: rotated, size: newSize)
+
+        // Rotate annotations: swap and transform coordinates
+        let oldW = selectionRect.width
+        let oldH = selectionRect.height
+        for ann in annotations {
+            let sx = ann.startPoint.x - selectionRect.minX
+            let sy = ann.startPoint.y - selectionRect.minY
+            let ex = ann.endPoint.x - selectionRect.minX
+            let ey = ann.endPoint.y - selectionRect.minY
+            if clockwise {
+                ann.startPoint = NSPoint(x: selectionRect.minX + sy, y: selectionRect.minY + (oldW - sx))
+                ann.endPoint = NSPoint(x: selectionRect.minX + ey, y: selectionRect.minY + (oldW - ex))
+            } else {
+                ann.startPoint = NSPoint(x: selectionRect.minX + (oldH - sy), y: selectionRect.minY + sx)
+                ann.endPoint = NSPoint(x: selectionRect.minX + (oldH - ey), y: selectionRect.minY + ex)
+            }
+            if let pts = ann.points {
+                ann.points = pts.map { p in
+                    let px = p.x - selectionRect.minX
+                    let py = p.y - selectionRect.minY
+                    if clockwise {
+                        return NSPoint(x: selectionRect.minX + py, y: selectionRect.minY + (oldW - px))
+                    } else {
+                        return NSPoint(x: selectionRect.minX + (oldH - py), y: selectionRect.minY + px)
+                    }
+                }
+            }
+        }
+
+        // Update selection rect to match new dimensions
+        selectionRect = NSRect(origin: selectionRect.origin, size: newSize)
+
+        cachedCompositedImage = nil
+        needsDisplay = true
+
+        // Notify editor to resize
+        overlayDelegate?.overlayViewDidFinishSelection(selectionRect)
+    }
+
     /// Add a captured image as a draggable stamp annotation, placed below the current canvas.
     /// The canvas auto-expands to fit. Used by "Add Capture" in the editor.
     func addCaptureImage(_ newImage: NSImage) {
@@ -4327,8 +4438,30 @@ class OverlayView: NSView {
             let rawW = abs(point.x - selectionStart.x)
             let rawH = abs(point.y - selectionStart.y)
             let shiftHeld = event.modifierFlags.contains(.shift)
-            let w = max(1, shiftHeld ? min(rawW, rawH) : rawW)
-            let h = max(1, shiftHeld ? min(rawW, rawH) : rawH)
+            let w: CGFloat
+            let h: CGFloat
+            if shiftHeld {
+                let ratio = Self.aspectRatio
+                if ratio.width == ratio.height {
+                    // 1:1 square
+                    let side = min(rawW, rawH)
+                    w = max(1, side)
+                    h = max(1, side)
+                } else {
+                    // Fixed aspect ratio
+                    let targetRatio = ratio.width / ratio.height
+                    if rawW / max(1, rawH) > targetRatio {
+                        h = max(1, rawH)
+                        w = max(1, h * targetRatio)
+                    } else {
+                        w = max(1, rawW)
+                        h = max(1, w / targetRatio)
+                    }
+                }
+            } else {
+                w = max(1, rawW)
+                h = max(1, rawH)
+            }
             let x = selectionStart.x < point.x ? selectionStart.x : selectionStart.x - w
             let y = selectionStart.y < point.y ? selectionStart.y : selectionStart.y - h
             selectionRect = NSRect(x: x, y: y, width: w, height: h)
@@ -4497,11 +4630,15 @@ class OverlayView: NSView {
                 let rawDx = canvasPoint.x - annotationDragStart.x
                 let rawDy = canvasPoint.y - annotationDragStart.y
                 // Apply snap to the annotation's bounding rect after tentative move
-                var movedRect = annotation.boundingRect.offsetBy(dx: rawDx, dy: rawDy)
+                let movedRect = annotation.boundingRect.offsetBy(dx: rawDx, dy: rawDy)
                 let snap = snapRectDelta(rect: movedRect, excluding: annotation)
                 let finalDx = rawDx + snap.dx
                 let finalDy = rawDy + snap.dy
                 annotation.move(dx: finalDx, dy: finalDy)
+                // Also move multi-selected annotations
+                for extra in multiSelectedAnnotations where extra !== annotation && !extra.isLocked {
+                    extra.move(dx: finalDx, dy: finalDy)
+                }
                 annotationDragStart = NSPoint(
                     x: canvasPoint.x + snap.dx, y: canvasPoint.y + snap.dy)
                 didMoveAnnotation = true
@@ -4694,18 +4831,23 @@ class OverlayView: NSView {
 
         // Toolbar right-clicks handled by ToolbarButtonView.onRightClick → handleToolbarButtonRightClick
 
-        // Right-click on a selected/hovered line/arrow: add anchor point
-        if state == .selected {
-            if let ann = selectedAnnotation,
-                ann.tool == .arrow || ann.tool == .line || ann.tool == .measure
-            {
-                let canvasPoint = viewToCanvas(point)
-                if ann.hitTest(point: canvasPoint) {
-                    addAnchorPoint(to: ann, at: canvasPoint)
-                    cachedCompositedImage = nil
-                    needsDisplay = true
-                    return
-                }
+        // Right-click on a selected annotation
+        if state == .selected, let ann = selectedAnnotation {
+            let canvasPoint = viewToCanvas(point)
+
+            // Line/arrow: add anchor point if right-clicking on the shape
+            if (ann.tool == .arrow || ann.tool == .line || ann.tool == .measure),
+               ann.hitTest(point: canvasPoint) {
+                addAnchorPoint(to: ann, at: canvasPoint)
+                cachedCompositedImage = nil
+                needsDisplay = true
+                return
+            }
+
+            // Show context menu for other annotation types
+            if ann.hitTest(point: canvasPoint) {
+                showAnnotationContextMenu(for: ann, at: event.locationInWindow)
+                return
             }
         }
 
@@ -4836,6 +4978,19 @@ class OverlayView: NSView {
             return
         }
         guard state == .selected else { return }
+
+        // Cmd+Opt+Scroll: adjust selected annotation opacity
+        if event.modifierFlags.contains(.command) && event.modifierFlags.contains(.option),
+           let ann = selectedAnnotation, !ann.isLocked {
+            let delta = event.scrollingDeltaY
+            guard abs(delta) > 0.01 else { return }
+            let sensitivity: CGFloat = event.hasPreciseScrollingDeltas ? 0.003 : 0.05
+            ann.opacity = max(0.1, min(1.0, ann.opacity + delta * sensitivity))
+            cachedCompositedImage = nil
+            needsDisplay = true
+            return
+        }
+
         let isTrackpadPhased = event.phase != [] || event.momentumPhase != []
         let isCommandScroll = event.modifierFlags.contains(.command)
 
@@ -5275,7 +5430,214 @@ class OverlayView: NSView {
 
     private func applyColorToSelectedAnnotation() {
         guard let ann = selectedAnnotation else { return }
+        let snapshot = ann.clone()
         ann.color = opacityAppliedColor(for: ann.tool)
+        pushPropertyChangeUndo(annotation: ann, snapshot: snapshot)
+        needsDisplay = true
+    }
+
+    // MARK: - Annotation Context Menu
+
+    private func showAnnotationContextMenu(for ann: Annotation, at windowPoint: NSPoint) {
+        let menu = NSMenu()
+
+        let duplicateItem = NSMenuItem(title: "Duplicate", action: #selector(ctxDuplicate), keyEquivalent: "d")
+        duplicateItem.keyEquivalentModifierMask = .command
+        duplicateItem.target = self
+        menu.addItem(duplicateItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let lockTitle = ann.isLocked ? "Unlock" : "Lock"
+        let lockItem = NSMenuItem(title: lockTitle, action: #selector(ctxToggleLock), keyEquivalent: "l")
+        lockItem.keyEquivalentModifierMask = .command
+        lockItem.target = self
+        menu.addItem(lockItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let fwdItem = NSMenuItem(title: "Bring Forward", action: #selector(ctxBringForward), keyEquivalent: "]")
+        fwdItem.keyEquivalentModifierMask = .command
+        fwdItem.target = self
+        menu.addItem(fwdItem)
+
+        let bwdItem = NSMenuItem(title: "Send Backward", action: #selector(ctxSendBackward), keyEquivalent: "[")
+        bwdItem.keyEquivalentModifierMask = .command
+        bwdItem.target = self
+        menu.addItem(bwdItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let copyStyleItem = NSMenuItem(title: "Copy Style", action: #selector(ctxCopyStyle), keyEquivalent: "c")
+        copyStyleItem.keyEquivalentModifierMask = [.command, .shift]
+        copyStyleItem.target = self
+        menu.addItem(copyStyleItem)
+
+        let pasteStyleItem = NSMenuItem(title: "Paste Style", action: #selector(ctxPasteStyle), keyEquivalent: "v")
+        pasteStyleItem.keyEquivalentModifierMask = [.command, .shift]
+        pasteStyleItem.target = self
+        pasteStyleItem.isEnabled = copiedAnnotationStyle != nil
+        menu.addItem(pasteStyleItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // Style presets submenu
+        let presetsItem = NSMenuItem(title: "Style Presets", action: nil, keyEquivalent: "")
+        let presetsMenu = NSMenu()
+        let savePresetItem = NSMenuItem(title: "Save Current Style...", action: #selector(ctxSavePreset), keyEquivalent: "")
+        savePresetItem.target = self
+        presetsMenu.addItem(savePresetItem)
+        let presets = AnnotationPresetManager.shared.presets
+        if !presets.isEmpty {
+            presetsMenu.addItem(NSMenuItem.separator())
+            for (i, preset) in presets.enumerated() {
+                let item = NSMenuItem(title: preset.name, action: #selector(ctxApplyPreset(_:)), keyEquivalent: "")
+                item.target = self
+                item.tag = i
+                presetsMenu.addItem(item)
+            }
+        }
+        presetsItem.submenu = presetsMenu
+        menu.addItem(presetsItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let deleteItem = NSMenuItem(title: "Delete", action: #selector(ctxDelete), keyEquivalent: "\u{08}")
+        deleteItem.target = self
+        deleteItem.isEnabled = !ann.isLocked
+        menu.addItem(deleteItem)
+
+        menu.popUp(positioning: nil, at: windowPoint, in: self)
+    }
+
+    @objc private func ctxDuplicate() { duplicateSelectedAnnotation() }
+    @objc private func ctxToggleLock() {
+        guard let ann = selectedAnnotation else { return }
+        ann.isLocked = !ann.isLocked
+        cachedCompositedImage = nil
+        needsDisplay = true
+    }
+    @objc private func ctxBringForward() {
+        guard let ann = selectedAnnotation, let idx = annotations.firstIndex(where: { $0 === ann }),
+              idx < annotations.count - 1 else { return }
+        annotations.swapAt(idx, idx + 1)
+        cachedCompositedImage = nil
+        needsDisplay = true
+    }
+    @objc private func ctxSendBackward() {
+        guard let ann = selectedAnnotation, let idx = annotations.firstIndex(where: { $0 === ann }),
+              idx > 0 else { return }
+        annotations.swapAt(idx, idx - 1)
+        cachedCompositedImage = nil
+        needsDisplay = true
+    }
+    @objc private func ctxDelete() {
+        guard let ann = selectedAnnotation, !ann.isLocked else { return }
+        if let idx = annotations.firstIndex(where: { $0 === ann }) {
+            annotations.remove(at: idx)
+            undoStack.append(.deleted(ann, idx))
+            redoStack.removeAll()
+        }
+        selectedAnnotation = nil
+        cachedCompositedImage = nil
+        needsDisplay = true
+    }
+
+    // MARK: - Style Copy/Paste
+
+    private struct AnnotationStyle {
+        let color: NSColor
+        let strokeWidth: CGFloat
+        let lineStyle: LineStyle
+        let arrowStyle: ArrowStyle
+        let rectFillStyle: RectFillStyle
+        let rectCornerRadius: CGFloat
+        let opacity: CGFloat
+    }
+
+    private static var copiedAnnotationStyle: AnnotationStyle?
+    private var copiedAnnotationStyle: AnnotationStyle? {
+        get { Self.copiedAnnotationStyle }
+        set { Self.copiedAnnotationStyle = newValue }
+    }
+
+    @objc private func ctxSavePreset() {
+        guard let ann = selectedAnnotation else { return }
+        let alert = NSAlert()
+        alert.messageText = "Save Style Preset"
+        alert.informativeText = "Enter a name for this style:"
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        input.stringValue = "Style \(AnnotationPresetManager.shared.presets.count + 1)"
+        alert.accessoryView = input
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        if alert.runModal() == .alertFirstButtonReturn {
+            let name = input.stringValue.isEmpty ? "Untitled" : input.stringValue
+            AnnotationPresetManager.shared.save(
+                name: name, color: ann.color, strokeWidth: ann.strokeWidth,
+                lineStyle: ann.lineStyle.rawValue, arrowStyle: ann.arrowStyle.rawValue,
+                rectFillStyle: ann.rectFillStyle.rawValue, cornerRadius: ann.rectCornerRadius,
+                opacity: ann.opacity
+            )
+        }
+    }
+
+    @objc private func ctxApplyPreset(_ sender: NSMenuItem) {
+        let presets = AnnotationPresetManager.shared.presets
+        guard sender.tag >= 0, sender.tag < presets.count,
+              let ann = selectedAnnotation, !ann.isLocked else { return }
+        let preset = presets[sender.tag]
+        let snapshot = ann.clone()
+        if let color = AnnotationPresetManager.shared.hexToColor(preset.colorHex) {
+            ann.color = color
+        }
+        ann.strokeWidth = CGFloat(preset.strokeWidth)
+        ann.lineStyle = LineStyle(rawValue: preset.lineStyle) ?? ann.lineStyle
+        ann.arrowStyle = ArrowStyle(rawValue: preset.arrowStyle) ?? ann.arrowStyle
+        ann.rectFillStyle = RectFillStyle(rawValue: preset.rectFillStyle) ?? ann.rectFillStyle
+        ann.rectCornerRadius = CGFloat(preset.cornerRadius)
+        ann.opacity = CGFloat(preset.opacity)
+        pushPropertyChangeUndo(annotation: ann, snapshot: snapshot)
+        needsDisplay = true
+    }
+
+    @objc private func ctxCopyStyle() {
+        guard let ann = selectedAnnotation else { return }
+        copiedAnnotationStyle = AnnotationStyle(
+            color: ann.color,
+            strokeWidth: ann.strokeWidth,
+            lineStyle: ann.lineStyle,
+            arrowStyle: ann.arrowStyle,
+            rectFillStyle: ann.rectFillStyle,
+            rectCornerRadius: ann.rectCornerRadius,
+            opacity: ann.opacity
+        )
+    }
+
+    @objc private func ctxPasteStyle() {
+        guard let ann = selectedAnnotation, let style = copiedAnnotationStyle, !ann.isLocked else { return }
+        let snapshot = ann.clone()
+        ann.color = style.color
+        ann.strokeWidth = style.strokeWidth
+        ann.lineStyle = style.lineStyle
+        ann.arrowStyle = style.arrowStyle
+        ann.rectFillStyle = style.rectFillStyle
+        ann.rectCornerRadius = style.rectCornerRadius
+        ann.opacity = style.opacity
+        pushPropertyChangeUndo(annotation: ann, snapshot: snapshot)
+        needsDisplay = true
+    }
+
+    /// Duplicate the currently selected annotation with a slight offset.
+    private func duplicateSelectedAnnotation() {
+        guard let ann = selectedAnnotation else { return }
+        let copy = ann.clone()
+        let offset: CGFloat = 15
+        copy.move(dx: offset, dy: -offset)
+        annotations.append(copy)
+        undoStack.append(.added(copy))
+        redoStack.removeAll()
+        selectedAnnotation = copy
         cachedCompositedImage = nil
         needsDisplay = true
     }
@@ -5307,7 +5669,17 @@ class OverlayView: NSView {
             }
             // Then check if clicking on any annotation's body
             if let clicked = annotations.reversed().first(where: { $0.isMovable && $0.hitTest(point: point) }) {
-                selectedAnnotation = clicked
+                if NSEvent.modifierFlags.contains(.shift) && selectedAnnotation != nil {
+                    // Shift+click: toggle multi-selection
+                    if let idx = multiSelectedAnnotations.firstIndex(where: { $0 === clicked }) {
+                        multiSelectedAnnotations.remove(at: idx)
+                    } else if clicked !== selectedAnnotation {
+                        multiSelectedAnnotations.append(clicked)
+                    }
+                } else {
+                    multiSelectedAnnotations.removeAll()
+                    selectedAnnotation = clicked
+                }
                 isDraggingAnnotation = true
                 didMoveAnnotation = false
                 annotationDragStart = point
@@ -5318,7 +5690,10 @@ class OverlayView: NSView {
         }
 
         // Clicking empty space — clear selection and start new annotation
-        if selectedAnnotation != nil { selectedAnnotation = nil }
+        if selectedAnnotation != nil {
+            selectedAnnotation = nil
+            multiSelectedAnnotations.removeAll()
+        }
 
         // Dispatch to extracted tool handler if available
         if let handler = toolHandlers[currentTool] {
@@ -5475,6 +5850,7 @@ class OverlayView: NSView {
         }
         // Click on the annotation body — start drag (annotation already selected)
         if selected.hitTest(point: point) {
+            guard !selected.isLocked else { return true }  // locked: no drag
             isDraggingAnnotation = true
             didMoveAnnotation = false
             annotationDragStart = point
@@ -5547,9 +5923,8 @@ class OverlayView: NSView {
 
     private func showMicPermissionAlert() {
         let alert = NSAlert()
-        alert.messageText = "Microphone Access Required"
-        alert.informativeText =
-            "macshot needs microphone permission to record voice audio. Open System Settings to grant access."
+        alert.messageText = NSLocalizedString("alert.mic_required", comment: "")
+        alert.informativeText = NSLocalizedString("alert.mic_body", comment: "")
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Open Settings")
         alert.addButton(withTitle: "Cancel")
@@ -5657,6 +6032,70 @@ class OverlayView: NSView {
                 }
             }
 
+            // Cmd+Shift+C/V: copy/paste annotation style
+            if state == .selected && textEditView == nil && event.modifierFlags.contains(.shift) {
+                if char == "c" {
+                    ctxCopyStyle()
+                    return true
+                } else if char == "v" {
+                    ctxPasteStyle()
+                    return true
+                }
+            }
+
+            // Cmd+] / Cmd+[ : bring annotation forward / send backward
+            if state == .selected && (char == "]" || char == "[") {
+                if let ann = selectedAnnotation, let idx = annotations.firstIndex(where: { $0 === ann }) {
+                    if char == "]" && idx < annotations.count - 1 {
+                        annotations.swapAt(idx, idx + 1)
+                        cachedCompositedImage = nil
+                        needsDisplay = true
+                    } else if char == "[" && idx > 0 {
+                        annotations.swapAt(idx, idx - 1)
+                        cachedCompositedImage = nil
+                        needsDisplay = true
+                    }
+                }
+                return true
+            }
+
+            // Cmd+S: save (Cmd+Shift+S: quick save without dialog)
+            if state == .selected && char == "s" {
+                if event.modifierFlags.contains(.shift) {
+                    handleToolbarAction(.save)  // delegate handles quickSave
+                } else {
+                    handleToolbarAction(.save)
+                }
+                return true
+            }
+
+            // Cmd+D: duplicate selected annotation
+            if state == .selected && char == "d" {
+                duplicateSelectedAnnotation()
+                return true
+            }
+
+            // Cmd+L: toggle lock on selected annotation
+            if state == .selected && char == "l" && textEditView == nil {
+                if let ann = selectedAnnotation {
+                    ann.isLocked = !ann.isLocked
+                    cachedCompositedImage = nil
+                    needsDisplay = true
+                }
+                return true
+            }
+
+            // Cmd+A: select all annotations (delete all with subsequent Del/Backspace)
+            // — If no annotation is selected, shows a count badge
+            if state == .selected && char == "a" && textEditView == nil {
+                if !annotations.isEmpty {
+                    // Select the last annotation so Delete key can clear all via undo grouping
+                    selectedAnnotation = annotations.last
+                    selectAllPending = true
+                }
+                return true
+            }
+
             // Canvas undo/redo — intercept before main menu consumes the event
             if state == .selected {
                 switch char {
@@ -5742,16 +6181,83 @@ class OverlayView: NSView {
             }
         case 51:  // Backspace/Delete — remove selected or hovered annotation
             guard textEditView == nil, state == .selected else { break }
-            if let ann = selectedAnnotation {
-                if let idx = annotations.firstIndex(where: { $0 === ann }) {
-                    annotations.remove(at: idx)
+            if selectAllPending && !annotations.isEmpty {
+                // Delete all annotations — each gets its own undo entry
+                for (idx, ann) in annotations.enumerated().reversed() {
                     undoStack.append(.deleted(ann, idx))
-                    redoStack.removeAll()
                 }
+                annotations.removeAll()
+                redoStack.removeAll()
                 selectedAnnotation = nil
+                selectAllPending = false
+                cachedCompositedImage = nil
+                needsDisplay = true
+            } else if let ann = selectedAnnotation {
+                guard !ann.isLocked else { break }  // locked: no delete
+                // Delete all multi-selected annotations too
+                let toDelete = allSelectedAnnotations.filter { !$0.isLocked }
+                for target in toDelete {
+                    if let idx = annotations.firstIndex(where: { $0 === target }) {
+                        annotations.remove(at: idx)
+                        undoStack.append(.deleted(target, idx))
+                    }
+                }
+                redoStack.removeAll()
+                selectedAnnotation = nil
+                multiSelectedAnnotations.removeAll()
                 cachedCompositedImage = nil
                 needsDisplay = true
             }
+        case 123, 124, 125, 126:  // Arrow keys — nudge or align selected annotation
+            guard textEditView == nil, state == .selected, let ann = selectedAnnotation, !ann.isLocked else { break }
+
+            // Cmd+Shift+Arrow: align annotation to selection edge/center
+            if event.modifierFlags.contains(.command) && event.modifierFlags.contains(.shift) {
+                let annRect = ann.boundingRect
+                var dx: CGFloat = 0, dy: CGFloat = 0
+                switch event.keyCode {
+                case 123: dx = selectionRect.minX - annRect.minX          // align left
+                case 124: dx = selectionRect.maxX - annRect.maxX          // align right
+                case 125: dy = selectionRect.minY - annRect.minY          // align bottom
+                case 126: dy = selectionRect.maxY - annRect.maxY          // align top
+                default: break
+                }
+                ann.move(dx: dx, dy: dy)
+                cachedCompositedImage = nil
+                needsDisplay = true
+                break
+            }
+
+            // Cmd+Arrow: center align
+            if event.modifierFlags.contains(.command) {
+                let annRect = ann.boundingRect
+                var dx: CGFloat = 0, dy: CGFloat = 0
+                switch event.keyCode {
+                case 123, 124: dx = selectionRect.midX - annRect.midX     // center horizontally
+                case 125, 126: dy = selectionRect.midY - annRect.midY     // center vertically
+                default: break
+                }
+                ann.move(dx: dx, dy: dy)
+                cachedCompositedImage = nil
+                needsDisplay = true
+                break
+            }
+
+            let step: CGFloat = event.modifierFlags.contains(.shift) ? 10 : 1
+            var dx: CGFloat = 0, dy: CGFloat = 0
+            switch event.keyCode {
+            case 123: dx = -step  // left
+            case 124: dx = step   // right
+            case 125: dy = -step  // down
+            case 126: dy = step   // up
+            default: break
+            }
+            ann.move(dx: dx, dy: dy)
+            for extra in multiSelectedAnnotations where extra !== ann && !extra.isLocked {
+                extra.move(dx: dx, dy: dy)
+            }
+            cachedCompositedImage = nil
+            needsDisplay = true
         default:
             // Auto-measure: hold "1" = vertical preview, hold "2" = horizontal preview
             if state == .selected && currentTool == .measure && textEditView == nil
@@ -5768,49 +6274,27 @@ class OverlayView: NSView {
                     }
                 }
             }
+            // ? key: toggle shortcut help overlay (any state, not editing text)
+            if textEditView == nil && event.characters == "?" {
+                toggleShortcutHelp()
+                return
+            }
+
             // Single-key tool shortcuts (only when selected, not editing text, no modifiers)
             if state == .selected && textEditView == nil && !event.modifierFlags.contains(.command)
                 && !event.modifierFlags.contains(.option) && !event.modifierFlags.contains(.control)
             {
                 if let char = event.charactersIgnoringModifiers?.lowercased() {
-                    switch char {
-                    case "p":
-                        handleToolbarAction(.tool(.pencil))
+                    if let action = ToolShortcutManager.shared.action(for: char) {
+                        switch action {
+                        case .detach:
+                            if shouldAllowDetach() { handleToolbarAction(.detach) }
+                        case .tool(let tool):
+                            handleToolbarAction(.tool(tool))
+                        default:
+                            handleToolbarAction(action)
+                        }
                         return
-                    case "a":
-                        handleToolbarAction(.tool(.arrow))
-                        return
-                    case "l":
-                        handleToolbarAction(.tool(.line))
-                        return
-                    case "r":
-                        handleToolbarAction(.tool(.rectangle))
-                        return
-                    case "t":
-                        handleToolbarAction(.tool(.text))
-                        return
-                    case "m":
-                        handleToolbarAction(.tool(.marker))
-                        return
-                    case "n":
-                        handleToolbarAction(.tool(.number))
-                        return
-                    case "b", "x":
-                        handleToolbarAction(.tool(.pixelate))
-                        return
-                    case "i":
-                        handleToolbarAction(.tool(.colorSampler))
-                        return
-                    case "s":
-                        handleToolbarAction(.tool(.select))
-                        return
-                    case "g":
-                        handleToolbarAction(.tool(.stamp))
-                        return
-                    case "e":
-                        if shouldAllowDetach() { handleToolbarAction(.detach) }
-                        return
-                    default: break
                     }
                 }
             }
@@ -6312,6 +6796,8 @@ class OverlayView: NSView {
         PopoverHelper.dismiss()
         editorTooltipView?.removeFromSuperview()
         editorTooltipView = nil
+        shortcutHelpPanel?.close()
+        shortcutHelpPanel = nil
         isTranslating = false
         translateEnabled = false
         autoMeasurePreview = nil

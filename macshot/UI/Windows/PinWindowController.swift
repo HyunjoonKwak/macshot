@@ -312,7 +312,7 @@ private class PinView: NSView {
 
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [ImageEncoder.utType]
-        savePanel.nameFieldStringValue = "macshot_\(OverlayWindowController.formattedTimestamp()).\(ImageEncoder.fileExtension)"
+        savePanel.nameFieldStringValue = "screenshot_\(OverlayWindowController.formattedTimestamp()).\(ImageEncoder.fileExtension)"
 
         savePanel.directoryURL = SaveDirectoryAccess.directoryHint()
 
@@ -334,14 +334,53 @@ private class PinView: NSView {
     }
 
     // Scroll to zoom (mouse wheel and trackpad two-finger scroll)
+    // Option+scroll adjusts window opacity instead
     override func scrollWheel(with event: NSEvent) {
         let delta = event.scrollingDeltaY
         guard abs(delta) > 0.01 else { return }
+
+        if event.modifierFlags.contains(.option) {
+            // Adjust opacity
+            let sensitivity: CGFloat = event.hasPreciseScrollingDeltas ? 0.003 : 0.05
+            let newAlpha = max(0.15, min(1.0, (window?.alphaValue ?? 1.0) + delta * sensitivity))
+            window?.alphaValue = newAlpha
+            showOpacityLabel(Int(round(newAlpha * 100)))
+            return
+        }
+
         // Trackpad sends fine-grained deltas; mouse wheel sends larger discrete steps
         let sensitivity: CGFloat = event.hasPreciseScrollingDeltas ? 0.005 : 0.03
         let factor: CGFloat = 1.0 + delta * sensitivity
         let loc = convert(event.locationInWindow, from: nil)
         onZoom?(factor, loc)
+    }
+
+    private var opacityLabel: NSTextField?
+    private var opacityHideTimer: Timer?
+
+    private func showOpacityLabel(_ percent: Int) {
+        if opacityLabel == nil {
+            let label = NSTextField(labelWithString: "")
+            label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+            label.textColor = .white
+            label.backgroundColor = NSColor(white: 0, alpha: 0.7)
+            label.isBezeled = false
+            label.drawsBackground = true
+            label.layer?.cornerRadius = 4
+            label.wantsLayer = true
+            label.layer?.masksToBounds = true
+            addSubview(label)
+            opacityLabel = label
+        }
+        opacityLabel?.stringValue = " \(percent)% "
+        opacityLabel?.sizeToFit()
+        opacityLabel?.frame.origin = NSPoint(x: 8, y: bounds.height - (opacityLabel?.frame.height ?? 0) - 8)
+        opacityLabel?.isHidden = false
+
+        opacityHideTimer?.invalidate()
+        opacityHideTimer = Timer.scheduledTimer(withTimeInterval: 1.2, repeats: false) { [weak self] _ in
+            self?.opacityLabel?.isHidden = true
+        }
     }
 
     // Pinch to zoom

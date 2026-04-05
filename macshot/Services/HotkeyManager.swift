@@ -14,6 +14,7 @@ class HotkeyManager {
         case historyOverlay = 5
         case captureOCR = 6
         case quickCapture = 7
+        case recaptureLastArea = 8
 
         var keyCodeKey: String {
             switch self {
@@ -24,6 +25,7 @@ class HotkeyManager {
             case .historyOverlay: return "hotkeyHistoryKeyCode"
             case .captureOCR: return "hotkeyOCRKeyCode"
             case .quickCapture: return "hotkeyQuickCaptureKeyCode"
+            case .recaptureLastArea: return "hotkeyRecaptureKeyCode"
             }
         }
 
@@ -36,6 +38,7 @@ class HotkeyManager {
             case .historyOverlay: return "hotkeyHistoryModifiers"
             case .captureOCR: return "hotkeyOCRModifiers"
             case .quickCapture: return "hotkeyQuickCaptureModifiers"
+            case .recaptureLastArea: return "hotkeyRecaptureModifiers"
             }
         }
 
@@ -52,6 +55,7 @@ class HotkeyManager {
             case .historyOverlay: return "History"
             case .captureOCR: return "Capture OCR"
             case .quickCapture: return "Quick Capture"
+            case .recaptureLastArea: return "Recapture Last Area"
             }
         }
 
@@ -64,12 +68,13 @@ class HotkeyManager {
             case .historyOverlay: return UInt32(kVK_ANSI_H)
             case .captureOCR: return UInt32(kVK_ANSI_T)
             case .quickCapture: return UInt32(kVK_ANSI_S)
+            case .recaptureLastArea: return 0  // no default hotkey
             }
         }
 
         var defaultModifiers: UInt32 {
             switch self {
-            case .recordScreen: return 0  // no default hotkey
+            case .recordScreen, .recaptureLastArea: return 0  // no default hotkey
             default: return UInt32(cmdKey | shiftKey)
             }
         }
@@ -108,7 +113,7 @@ class HotkeyManager {
     }
 
     /// Register all hotkeys with their callbacks.
-    func registerAll(captureArea: @escaping () -> Void, captureFullScreen: @escaping () -> Void, recordArea: @escaping () -> Void, recordScreen: @escaping () -> Void, historyOverlay: @escaping () -> Void, captureOCR: @escaping () -> Void, quickCapture: @escaping () -> Void) {
+    func registerAll(captureArea: @escaping () -> Void, captureFullScreen: @escaping () -> Void, recordArea: @escaping () -> Void, recordScreen: @escaping () -> Void, historyOverlay: @escaping () -> Void, captureOCR: @escaping () -> Void, quickCapture: @escaping () -> Void, recaptureLastArea: (() -> Void)? = nil) {
         unregisterAll()
         register(slot: .captureArea, callback: captureArea)
         register(slot: .captureFullScreen, callback: captureFullScreen)
@@ -117,6 +122,9 @@ class HotkeyManager {
         register(slot: .historyOverlay, callback: historyOverlay)
         register(slot: .captureOCR, callback: captureOCR)
         register(slot: .quickCapture, callback: quickCapture)
+        if let recapture = recaptureLastArea {
+            register(slot: .recaptureLastArea, callback: recapture)
+        }
     }
 
     /// Re-register all hotkeys (e.g., after preferences change).

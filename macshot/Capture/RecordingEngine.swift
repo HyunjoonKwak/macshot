@@ -172,11 +172,11 @@ final class RecordingEngine: NSObject {
             self.streamOutput = output
 
             let stream = SCStream(filter: filter, configuration: config, delegate: nil)
-            try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: DispatchQueue(label: "macshot.recording"))
+            try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: DispatchQueue(label: "screenshot.recording"))
             if #available(macOS 13.0, *) {
                 let recordAudio = UserDefaults.standard.bool(forKey: "recordSystemAudio") && format == .mp4
                 if recordAudio {
-                    try stream.addStreamOutput(output, type: .audio, sampleHandlerQueue: DispatchQueue(label: "macshot.recording.audio"))
+                    try stream.addStreamOutput(output, type: .audio, sampleHandlerQueue: DispatchQueue(label: "screenshot.recording.audio"))
                 }
             }
             try await stream.startCapture()
@@ -255,7 +255,7 @@ final class RecordingEngine: NSObject {
         delegate.onSample = { [weak self] sampleBuffer in
             self?.handleMicSample(sampleBuffer)
         }
-        dataOutput.setSampleBufferDelegate(delegate, queue: DispatchQueue(label: "macshot.recording.mic"))
+        dataOutput.setSampleBufferDelegate(delegate, queue: DispatchQueue(label: "screenshot.recording.mic"))
         guard session.canAddOutput(dataOutput) else { return }
         session.addOutput(dataOutput)
 

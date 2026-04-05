@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2F98BCF22F6D83A1006ADDC3 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000022F61B60100B71643 /* Sparkle */; };
 		2F98BCF32F6D83A1006ADDC3 /* WebP in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000052F61B60100B71643 /* WebP */; };
 /* End PBXBuildFile section */
 
@@ -42,7 +41,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				2F98BCF32F6D83A1006ADDC3 /* WebP in Frameworks */,
-				2F98BCF22F6D83A1006ADDC3 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,7 +83,6 @@
 			);
 			name = macshot;
 			packageProductDependencies = (
-				AA0000022F61B60100B71643 /* Sparkle */,
 				AA0000052F61B60100B71643 /* WebP */,
 			);
 			productName = macshot;
@@ -112,12 +109,12 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				ko,
 				Base,
 			);
 			mainGroup = 2F4EB1192F61B60100B71643;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				AA0000032F61B60100B71643 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				AA0000042F61B60100B71643 /* XCRemoteSwiftPackageReference "Swift-WebP" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -290,8 +287,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 3.5.2;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sw33tlie.macshot.macshot;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.hyunjoonkwak.screenshot;
+				PRODUCT_NAME = ScreenShot;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -323,8 +320,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 3.5.2;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sw33tlie.macshot.macshot;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.hyunjoonkwak.screenshot;
+				PRODUCT_NAME = ScreenShot;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -359,14 +356,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		AA0000032F61B60100B71643 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sparkle-project/Sparkle";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.6.0;
-			};
-		};
 		AA0000042F61B60100B71643 /* XCRemoteSwiftPackageReference "Swift-WebP" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/ainame/Swift-WebP.git";
@@ -378,11 +367,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		AA0000022F61B60100B71643 /* Sparkle */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = AA0000032F61B60100B71643 /* XCRemoteSwiftPackageReference "Sparkle" */;
-			productName = Sparkle;
-		};
 		AA0000052F61B60100B71643 /* WebP */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = AA0000042F61B60100B71643 /* XCRemoteSwiftPackageReference "Swift-WebP" */;
