@@ -94,19 +94,65 @@ deploy_dmg() {
     echo "  xattr -cr ${APP_NAME}.app"
 }
 
+# Version management
+current_version() {
+    grep 'MARKETING_VERSION' "$PROJECT_DIR/macshot.xcodeproj/project.pbxproj" | head -1 | sed 's/.*= //;s/;.*//'
+}
+
+set_version() {
+    local new_ver="$1"
+    if [[ ! "$new_ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Error: Version must be in X.Y.Z format (e.g. 1.2.0)"
+        exit 1
+    fi
+
+    local old_ver
+    old_ver=$(current_version)
+
+    sed -i '' "s/MARKETING_VERSION = ${old_ver}/MARKETING_VERSION = ${new_ver}/g" \
+        "$PROJECT_DIR/macshot.xcodeproj/project.pbxproj"
+    sed -i '' "s/CURRENT_PROJECT_VERSION = ${old_ver}/CURRENT_PROJECT_VERSION = ${new_ver}/g" \
+        "$PROJECT_DIR/macshot.xcodeproj/project.pbxproj"
+
+    echo "Version changed: ${old_ver} → ${new_ver}"
+}
+
+bump_version() {
+    local part="$1"
+    local ver
+    ver=$(current_version)
+    local major minor patch
+    IFS='.' read -r major minor patch <<< "$ver"
+
+    case "$part" in
+        major) major=$((major + 1)); minor=0; patch=0 ;;
+        minor) minor=$((minor + 1)); patch=0 ;;
+        patch) patch=$((patch + 1)) ;;
+        *) echo "Error: Use 'major', 'minor', or 'patch'"; exit 1 ;;
+    esac
+
+    set_version "${major}.${minor}.${patch}"
+}
+
 # Usage
 usage() {
-    echo "Usage: $0 <command>"
+    echo "Usage: $0 <command> [args]"
     echo ""
     echo "Commands:"
-    echo "  app    Build and install to /Applications (personal use)"
-    echo "  dmg    Build and create DMG on Desktop (for sharing)"
-    echo "  both   Do both: install + create DMG"
+    echo "  app              Build and install to /Applications"
+    echo "  dmg              Build and create DMG on Desktop"
+    echo "  both             Do both: install + create DMG"
+    echo "  version          Show current version"
+    echo "  version <X.Y.Z>  Set version (e.g. 1.2.0)"
+    echo "  bump <part>      Bump version (major/minor/patch)"
     echo ""
     echo "Examples:"
     echo "  ./deploy.sh app"
     echo "  ./deploy.sh dmg"
-    echo "  ./deploy.sh both"
+    echo "  ./deploy.sh version 2.0.0"
+    echo "  ./deploy.sh bump patch    # 1.0.0 → 1.0.1"
+    echo "  ./deploy.sh bump minor    # 1.0.1 → 1.1.0"
+    echo "  ./deploy.sh bump major    # 1.1.0 → 2.0.0"
 }
 
 case "${1:-}" in
@@ -122,6 +168,16 @@ case "${1:-}" in
         echo "---"
         echo ""
         deploy_dmg
+        ;;
+    version)
+        if [[ -z "${2:-}" ]]; then
+            echo "ScreenShot v$(current_version)"
+        else
+            set_version "$2"
+        fi
+        ;;
+    bump)
+        bump_version "${2:-patch}"
         ;;
     *)
         usage
