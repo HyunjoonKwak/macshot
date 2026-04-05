@@ -1,17 +1,20 @@
-# macshot
+# ScreenShot
 
-Native macOS screenshot & annotation tool inspired by Flameshot. Built with Swift + AppKit. No Qt, no Electron.
+Native macOS screenshot & annotation tool. Forked from [macshot](https://github.com/sw33tLie/macshot) by sw33tLie. Built with Swift + AppKit. No Qt, no Electron.
 
 ## Project Setup
 
 - **Language:** Swift 5.0
 - **UI:** AppKit (all windows created in code, storyboard is minimal — just app entry + main menu)
 - **Min Target:** macOS 12.3+ (Monterey)
-- **Bundle ID:** com.sw33tlie.macshot.macshot
-- **Sandbox:** Enabled (entitlements: network.client, files.user-selected.read-write, files.bookmarks.app-scope)
+- **Bundle ID:** com.hyunjoonkwak.screenshot
+- **Product Name:** ScreenShot
+- **Sandbox:** Enabled (entitlements: network.client, files.user-selected.read-write, files.bookmarks.app-scope, audio-input)
 - **LSUIElement:** YES (menu bar only app, no dock icon — switches to `.regular` when editor windows are open)
-- **Permissions:** Screen Recording (Info.plist has Privacy - Screen Capture Usage Description)
+- **Permissions:** Screen Recording, Microphone (optional), Notifications
 - **Xcode:** File system synchronized groups — just create .swift files in `macshot/` and Xcode picks them up automatically
+- **URL Scheme:** `screenshot://` (capture, fullscreen, ocr, quick, record, history, settings, recapture)
+- **Localization:** Korean (ko) + English (en) via Localizable.xcstrings
 
 ## Architecture
 
@@ -43,12 +46,19 @@ macshot/
 │   ├── VisionOCR.swift                 # Vision text recognition request factory
 │   ├── HotkeyManager.swift            # Global keyboard shortcut (Carbon RegisterEventHotKey)
 │   ├── ScreenshotHistory.swift         # Local history in ~/Library/Application Support/
-│   └── SaveDirectoryAccess.swift       # Security-scoped bookmark for save directory
+│   ├── SaveDirectoryAccess.swift       # Security-scoped bookmark for save directory
+│   ├── ToolShortcutManager.swift      # Customizable single-key tool shortcuts (UserDefaults)
+│   ├── AppShortcuts.swift             # Shortcuts.app App Intents (macOS 13+)
+│   ├── NotificationService.swift      # macOS Notification Center integration
+│   ├── ClipboardWatcher.swift         # Clipboard image monitoring
+│   ├── RegionPresetManager.swift      # Named capture region presets
+│   └── AnnotationPresetManager.swift  # Saved annotation style presets
 │
 ├── Upload/
 │   ├── ImgbbUploader.swift             # imgbb image upload
 │   ├── GoogleDriveUploader.swift       # Google Drive OAuth2 upload
-│   └── S3Uploader.swift               # S3-compatible upload
+│   ├── S3Uploader.swift               # S3-compatible upload
+│   └── WebhookUploader.swift          # Generic HTTP POST webhook upload
 │
 ├── UI/
 │   ├── Overlay/
@@ -107,7 +117,8 @@ macshot/
 │       ├── RecordingControlView.swift         # Click-through recording control overlay
 │       ├── RecordingToastView.swift           # Toast notification after recording completes
 │       ├── CountdownView.swift                # Delay capture countdown display
-│       └── PermissionOnboardingController.swift  # First-run permission guide
+│       ├── PermissionOnboardingController.swift  # First-run permission guide
+│       └── ShortcutHelpPanel.swift               # Keyboard shortcut help overlay (? key)
 │
 ├── Info.plist
 ├── Assets.xcassets/
